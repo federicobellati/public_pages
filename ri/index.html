@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#062b35">
+  <meta name="description" content="The CNR ISMAR research infrastructures registry: information, official websites and semantic descriptions.">
+  <title>Research infrastructures · CNR ISMAR</title>
+  <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="assets/vendor/n3.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenuto">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="https://assets.ve.ismar.cnr.it/public/public_site/" aria-label="CNR ISMAR · Data and services">
+      <img class="brand-cnr" src="assets/brand/cnr.svg" alt="" width="53" height="50">
+      <span class="brand-divider" aria-hidden="true"></span>
+      <img class="brand-ismar" src="assets/brand/ismar.svg" alt="" width="50" height="51">
+      <span class="brand-name" aria-hidden="true">CNR<br>ISMAR</span>
+    </a>
+    <span class="header-title">Research infrastructures</span>
+  </header>
+  <main id="contenuto" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="https://assets.ve.ismar.cnr.it/public/public_site/">Data and services</a><span aria-hidden="true">/</span><a href="./" id="registry-link">RI Registry</a><span id="crumb-divider" aria-hidden="true" hidden>/</span><span id="crumb-current" aria-current="page" hidden></span>
+    </nav>
+    <p id="status" class="notice" role="status" aria-live="polite">Loading the registry…</p>
+    <section id="catalogue" aria-labelledby="catalogue-title">
+      <div class="catalogue-heading"><p class="eyebrow">CNR ISMAR · Registry</p><h1 id="catalogue-title">Research<br>infrastructures<span class="accent">.</span></h1><p class="intro">Explore the research infrastructures described in the registry.<br>Discover each infrastructure and find its official resources.</p></div>
+      <div id="cards" class="cards"></div>
+    </section>
+    <article id="record" hidden aria-labelledby="record-title">
+      <div class="hero">
+        <div class="hero-copy"><p class="eyebrow">Research infrastructure</p><h1 id="record-title" lang="en"></h1><p id="full-title" class="full-title" lang="en"></p><div id="alternatives" class="tags" lang="en"></div></div>
+        <div class="logo-panel" id="logo-panel"><img id="ri-logo" alt=""><span id="logo-fallback" hidden>Research infrastructure</span></div>
+      </div>
+      <div class="record-grid">
+        <section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">Research at a glance</h2><p id="description" class="description" lang="en"></p></section>
+        <aside class="website-panel" aria-labelledby="website-title"><span class="external-mark" aria-hidden="true">↗</span><p class="eyebrow">Explore the infrastructure</p><h2 id="website-title">Official website</h2><p>Activities, services and information directly from the infrastructure.</p><a id="homepage" class="button primary">Visit website <span aria-hidden="true">↗</span></a><span id="homepage-host" class="small muted"></span></aside>
+      </div>
+      <section class="identity-panel" aria-labelledby="identity-title"><div><h2 id="identity-title">Persistent identifier</h2><a id="resource-iri" class="iri"></a></div><button id="copy-iri" class="button" type="button">Copy IRI</button></section>
+      <details id="metadata" class="disclosure">
+        <summary><span><span class="eyebrow">02 / Documentation</span><span class="summary-title">Record metadata</span></span><span class="plus" aria-hidden="true">+</span></summary>
+        <div class="disclosure-body"><p class="muted metadata-intro">Licensing, responsibilities and dates apply to the metadata document.</p><dl id="metadata-fields" class="metadata-fields"></dl></div>
+      </details>
+      <details id="source" class="disclosure">
+        <summary><span><span class="eyebrow">03 / Open data</span><span class="summary-title">Semantic description</span></span><span class="plus" aria-hidden="true">+</span></summary>
+        <div class="disclosure-body"><div class="source-toolbar"><p class="muted">The original document in RDF / Turtle format.</p><a id="download" class="button" download>Download .ttl <span aria-hidden="true">↓</span></a></div><pre tabindex="0" aria-label="Original Turtle document"><code id="turtle"></code></pre></div>
+      </details>
+      <div class="back-row"><a href="./">← All infrastructures</a><span id="record-origin" class="small muted"></span></div>
+    </article>
+    <div class="local-tools"><label for="local-file">Open a local Turtle file <span aria-hidden="true">↑</span></label><input id="local-file" type="file" accept=".ttl,text/turtle"><span class="small muted">View a description from your computer.</span></div>
+    <noscript><p class="notice">Enable JavaScript to view the infrastructure pages. The documents remain available: <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/danubius-ri.ttl">DANUBIUS-RI</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/elter.ttl">eLTER</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/embrc.ttl">EMBRC</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/emso.ttl">EMSO</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/euro-argo.ttl">Euro-Argo</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/icos.ttl">ICOS</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/jerico.ttl">JERICO</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/lifewatch.ttl">LifeWatch</a>.</p></noscript>
+  </main>
+  <footer class="site-footer"><span>CNR · ISMAR</span><span class="footer-caption">Research Infrastructures Registry</span><a href="https://www.ismar.cnr.it/">ISMAR <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>
