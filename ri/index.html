@@ -25,7 +25,7 @@
   </header>
   <main id="contenuto" tabindex="-1">
     <nav class="breadcrumbs" aria-label="Breadcrumb">
-      <a href="https://assets.ve.ismar.cnr.it/public/public_site/">Data and services</a><span aria-hidden="true">/</span><a href="./" id="registry-link">RI Registry</a><span id="crumb-divider" aria-hidden="true" hidden>/</span><span id="crumb-current" aria-current="page" hidden></span>
+      <a href="https://assets.ve.ismar.cnr.it/public/public_site/">Data and services</a><span aria-hidden="true">/</span><a href="index.html" id="registry-link">RI Registry</a><span id="crumb-divider" aria-hidden="true" hidden>/</span><span id="crumb-current" aria-current="page" hidden></span>
     </nav>
     <p id="status" class="notice" role="status" aria-live="polite">Loading the registry…</p>
     <section id="catalogue" aria-labelledby="catalogue-title">
@@ -38,7 +38,7 @@
         <div class="logo-panel" id="logo-panel"><img id="ri-logo" alt=""><span id="logo-fallback" hidden>Research infrastructure</span></div>
       </div>
       <div class="record-grid">
-        <section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">Research at a glance</h2><p id="description" class="description" lang="en"></p></section>
+        <section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">Research at a glance</h2><p id="description" class="description" lang="en"></p><div id="scientific-domains" hidden><h3>Scientific domains</h3><ul id="scientific-domain-links" class="iri"></ul></div></section>
         <aside class="website-panel" aria-labelledby="website-title"><span class="external-mark" aria-hidden="true">↗</span><p class="eyebrow">Explore the infrastructure</p><h2 id="website-title">Official website</h2><p>Activities, services and information directly from the infrastructure.</p><a id="homepage" class="button primary">Visit website <span aria-hidden="true">↗</span></a><span id="homepage-host" class="small muted"></span></aside>
       </div>
       <section class="identity-panel" aria-labelledby="identity-title"><div><h2 id="identity-title">Persistent identifier</h2><a id="resource-iri" class="iri"></a></div><button id="copy-iri" class="button" type="button">Copy IRI</button></section>
@@ -48,12 +48,11 @@
       </details>
       <details id="source" class="disclosure">
         <summary><span><span class="eyebrow">03 / Open data</span><span class="summary-title">Semantic description</span></span><span class="plus" aria-hidden="true">+</span></summary>
-        <div class="disclosure-body"><div class="source-toolbar"><p class="muted">The original document in RDF / Turtle format.</p><a id="download" class="button" download>Download .ttl <span aria-hidden="true">↓</span></a></div><pre tabindex="0" aria-label="Original Turtle document"><code id="turtle"></code></pre></div>
+        <div class="disclosure-body"><div class="source-toolbar"><p class="muted">The RDF description retrieved from the registry, in Turtle format.</p><a id="download" class="button" download>Download .ttl <span aria-hidden="true">↓</span></a></div><pre tabindex="0" aria-label="Turtle description from the registry"><code id="turtle"></code></pre></div>
       </details>
-      <div class="back-row"><a href="./">← All infrastructures</a><span id="record-origin" class="small muted"></span></div>
+      <div class="back-row"><a href="index.html">← All infrastructures</a><span id="record-origin" class="small muted"></span></div>
     </article>
-    <div class="local-tools"><label for="local-file">Open a local Turtle file <span aria-hidden="true">↑</span></label><input id="local-file" type="file" accept=".ttl,text/turtle"><span class="small muted">View a description from your computer.</span></div>
-    <noscript><p class="notice">Enable JavaScript to view the infrastructure pages. The documents remain available: <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/danubius-ri.ttl">DANUBIUS-RI</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/elter.ttl">eLTER</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/embrc.ttl">EMBRC</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/emso.ttl">EMSO</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/euro-argo.ttl">Euro-Argo</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/icos.ttl">ICOS</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/jerico.ttl">JERICO</a>, <a href="https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/lifewatch.ttl">LifeWatch</a>.</p></noscript>
+    <noscript><p class="notice">Enable JavaScript to load the registry and individual infrastructure pages from the SPARQL service.</p></noscript>
   </main>
   <footer class="site-footer"><span>CNR · ISMAR</span><span class="footer-caption">Research Infrastructures Registry</span><a href="https://www.ismar.cnr.it/">ISMAR <span aria-hidden="true">↗</span></a></footer>
 </body>

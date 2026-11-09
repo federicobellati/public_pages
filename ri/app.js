@@ -1,14 +1,13 @@
 'use strict';
 
-// File names only: descriptions and metadata are always read from Turtle.
-const infrastructureIds = ['danubius-ri', 'elter', 'embrc', 'emso', 'euro-argo', 'icos', 'jerico', 'lifewatch'];
 const registryIRI = 'https://w3id.org/cnr-ismar/research-infrastructures-registry/';
-const registryFilesURL = 'https://assets.ve.ismar.cnr.it/registry/research-infrastructures-registry/';
+const sparqlEndpoint = 'https://fuseki.ve.ismar.cnr.it/rireg/query';
 const ns = { rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', lupo: 'https://kos.lifewatch.eu/ontologies/LUPO#', dc: 'http://purl.org/dc/terms/', foaf: 'http://xmlns.com/foaf/0.1/', dcat: 'http://www.w3.org/ns/dcat#', vc: 'http://www.w3.org/2006/vcard/ns#', owl: 'http://www.w3.org/2002/07/owl#', rdfs: 'http://www.w3.org/2000/01/rdf-schema#' };
 const byId = id => document.getElementById(id);
 let downloadURL;
 let currentIRI = '';
 let loadSequence = 0;
+const validId = id => typeof id === 'string' && id.length > 0 && !/[\u0000-\u0020<>"{}|^`\\/?#]/u.test(id);
 
 function notice(message, error = false) {
   byId('status').textContent = message;
@@ -37,6 +36,7 @@ function linked(value, label, email = false) {
 function parseRecord(text, baseIRI) {
   const store = new N3.Store(new N3.Parser({ baseIRI, format: 'text/turtle' }).parse(text));
   const subjects = store.getSubjects(ns.rdf + 'type', N3.DataFactory.namedNode(ns.lupo + 'ResearchInfrastructure'), null);
+  if (!subjects.length) throw new Error('The requested infrastructure was not found in the dataset.');
   if (subjects.length !== 1 || subjects[0].termType !== 'NamedNode') throw new Error('The document must describe exactly one infrastructure with an explicit IRI and type lupo:ResearchInfrastructure.');
   const resource = subjects[0];
   const values = (subject, predicate) => subject ? store.getObjects(subject, predicate, null) : [];
@@ -44,16 +44,34 @@ function parseRecord(text, baseIRI) {
   const textTerm = terms => terms.find(term => term.termType === 'Literal' && term.language === 'en') || terms.find(term => term.termType === 'Literal');
   const title = textTerm(values(resource, ns.dc + 'title'));
   const description = textTerm(values(resource, ns.dc + 'description'));
-  const alternatives = values(resource, ns.dc + 'alternative').filter(term => term.termType === 'Literal');
+  const alternatives = values(resource, ns.dc + 'alternative').filter(term => term.termType === 'Literal').sort((a, b) => a.value < b.value ? -1 : a.value > b.value ? 1 : 0);
   // The established profile identifies the metadata document by RI IRI + .ttl.
   const metadata = N3.DataFactory.namedNode(resource.value + '.ttl');
   return { text, resource, metadata, values, value, title, description, alternatives, name: textTerm(alternatives)?.value || title?.value || resource.value };
 }
 
+async function querySparql(query, accept) {
+  const url = new URL(sparqlEndpoint);
+  url.searchParams.set('query', query);
+  const response = await fetch(url, { headers: { Accept: accept }, credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error('The registry service is unavailable (HTTP ' + response.status + ').');
+  if (!(response.headers.get('Content-Type') || '').toLowerCase().includes(accept)) throw new Error('The registry service returned an unexpected response format.');
+  return response;
+}
+
 async function fetchRecord(id) {
-  const response = await fetch(registryFilesURL + encodeURIComponent(id) + '.ttl', { headers: { Accept: 'text/turtle' }, signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error('Document unavailable (HTTP ' + response.status + ').');
-  return parseRecord(await response.text(), registryIRI + encodeURIComponent(id) + '.ttl');
+  if (!validId(id)) throw new Error('Invalid infrastructure identifier.');
+  const iri = registryIRI + id;
+  // Retrieve the existing RI, metadata document, contact and publisher without creating new relationships.
+  const query = `CONSTRUCT { ?s ?p ?o } WHERE {
+    { VALUES ?s { <${iri}> <${iri}.ttl> } ?s ?p ?o }
+    UNION { VALUES ?document { <${iri}.ttl> } ?document (<${ns.dcat}contactPoint>|<${ns.dc}publisher>) ?s . ?s ?p ?o }
+  }`;
+  const response = await querySparql(query, 'text/turtle');
+  const text = await response.text();
+  const record = parseRecord(text, iri + '.ttl');
+  if (record.resource.value !== iri) throw new Error('The requested infrastructure was not found in the dataset.');
+  return record;
 }
 
 function field(label, content, language) {
@@ -81,7 +99,7 @@ function dateContent(term) {
   return time;
 }
 
-function renderRecord(record, local = false) {
+function renderRecord(record) {
   const { resource, metadata, value, values, title, description, alternatives, name } = record;
   currentIRI = resource.value;
   byId('catalogue').hidden = true;
@@ -94,6 +112,9 @@ function renderRecord(record, local = false) {
   byId('full-title').hidden = !title || title.value === name;
   byId('description').textContent = description?.value || 'No description is provided in the document.';
   byId('description').lang = description?.language || 'en';
+  const domains = values(resource, ns.dc + 'subject').filter(term => term.termType === 'NamedNode');
+  byId('scientific-domains').hidden = !domains.length;
+  byId('scientific-domain-links').replaceChildren(...domains.map(term => { const item = element('li'); item.append(linked(term.value)); return item; }));
   byId('alternatives').replaceChildren(...alternatives.filter(term => term.value !== name && term.value !== title?.value).map(term => { const tag = element('span', term.value, 'tag'); tag.lang = term.language || 'en'; return tag; }));
   byId('crumb-current').textContent = name;
   byId('crumb-current').hidden = byId('crumb-divider').hidden = false;
@@ -111,7 +132,7 @@ function renderRecord(record, local = false) {
   byId('homepage').hidden = !homepageURL;
   if (homepageURL) byId('homepage').href = homepageURL; else byId('homepage').removeAttribute('href');
   byId('homepage-host').textContent = homepageURL ? new URL(homepageURL).hostname : 'No website is provided in the document.';
-  // Keep a single anchor, including when an imported IRI uses an unsupported scheme.
+  // Keep a single anchor for the persistent identifier.
   const iriNode = byId('resource-iri');
   iriNode.textContent = resource.value;
   const iriURL = safeURL(resource.value);
@@ -146,52 +167,56 @@ function renderRecord(record, local = false) {
   downloadURL = URL.createObjectURL(new Blob([record.text], { type: 'text/turtle;charset=utf-8' }));
   byId('download').href = downloadURL;
   byId('download').download = resource.value.split('/').pop().replace(/[^a-zA-Z0-9._-]/g, '_') + '.ttl';
-  byId('record-origin').textContent = local ? 'Local file preview' : 'Description from the registry';
+  byId('record-origin').textContent = 'Description from the SPARQL registry';
   byId('metadata').open = byId('source').open = false;
   byId('copy-iri').textContent = 'Copy IRI';
   notice('');
 }
 
 async function showCatalogue() {
-  if (location.protocol === 'file:') { notice('To preview a description from this folder, select a Turtle file using “Open a local Turtle file”. Infrastructure pages load automatically on the website.'); return; }
   const sequence = ++loadSequence;
-  const results = await Promise.allSettled(infrastructureIds.map(fetchRecord));
+  const query = `SELECT DISTINCT ?ri ?title ?alternative WHERE {
+    ?ri a <${ns.lupo}ResearchInfrastructure> .
+    FILTER(isIRI(?ri) && STRSTARTS(STR(?ri), "${registryIRI}"))
+    OPTIONAL { ?ri <${ns.dc}title> ?title }
+    OPTIONAL { ?ri <${ns.dc}alternative> ?alternative }
+  } ORDER BY ?ri ?title ?alternative`;
+  const response = await querySparql(query, 'application/sparql-results+json');
+  const data = await response.json();
   if (sequence !== loadSequence) return;
-  results.forEach((result, index) => {
-    const id = infrastructureIds[index];
+  if (!Array.isArray(data.results?.bindings)) throw new Error('The registry service returned invalid query results.');
+  const records = new Map();
+  for (const row of data.results.bindings) {
+    if (row.ri?.type !== 'uri' || !row.ri.value.startsWith(registryIRI)) throw new Error('The registry service returned an invalid infrastructure IRI.');
+    const id = row.ri.value.slice(registryIRI.length);
+    if (!validId(id)) throw new Error('The registry contains an unsupported infrastructure identifier.');
+    if (!records.has(id)) records.set(id, { id, titles: [], alternatives: [] });
+    const record = records.get(id);
+    if (row.title?.type === 'literal') record.titles.push(row.title);
+    if (row.alternative?.type === 'literal') record.alternatives.push(row.alternative);
+  }
+  const preferred = terms => terms.find(term => term['xml:lang'] === 'en') || terms[0];
+  const cards = [...records.values()].map((record, index) => {
+    const title = preferred(record.titles);
+    const name = preferred(record.alternatives) || title;
     const card = element('a', undefined, 'card');
-    card.href = '?id=' + encodeURIComponent(id);
+    card.href = '?id=' + encodeURIComponent(record.id);
     const arrow = element('span', '↗', 'card-arrow');
     arrow.setAttribute('aria-hidden', 'true');
-    const label = element('h2', result.status === 'fulfilled' ? result.value.name : id);
-    const subtitle = element('p', result.status === 'fulfilled' ? result.value.title?.value : 'Description temporarily unavailable');
-    label.lang = subtitle.lang = 'en';
+    const label = element('h2', name?.value || record.id);
+    const subtitle = element('p', title?.value || '');
+    label.lang = name?.['xml:lang'] || 'en';
+    subtitle.lang = title?.['xml:lang'] || 'en';
     card.append(element('span', String(index + 1).padStart(2, '0'), 'card-index'), arrow, label, subtitle);
-    byId('cards').append(card);
+    return card;
   });
-  const failed = results.filter(result => result.status === 'rejected').length;
-  notice(failed ? failed + ' description(s) are unavailable. Open an infrastructure page to try again.' : '');
+  byId('cards').replaceChildren(...cards);
+  notice(cards.length ? '' : 'No research infrastructures are currently published in the registry.');
 }
 
 byId('copy-iri').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(currentIRI); byId('copy-iri').textContent = 'IRI copied ✓'; }
   catch { const range = document.createRange(); range.selectNodeContents(byId('resource-iri')); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); notice('Identifier selected: press Ctrl+C or use the Copy command on your device.'); }
-});
-
-byId('local-file').addEventListener('change', async event => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const sequence = ++loadSequence;
-  try {
-    const text = await file.text();
-    const record = parseRecord(text, registryIRI + encodeURIComponent(file.name));
-    if (sequence !== loadSequence) return;
-    renderRecord(record, true);
-    // A local preview must not retain a misleading shareable registry query.
-    if (location.protocol !== 'file:') history.replaceState(null, '', location.pathname);
-    byId('contenuto').focus();
-  } catch (error) { if (sequence === loadSequence) notice('Unable to open the file. ' + error.message, true); }
-  event.target.value = '';
 });
 
 async function init() {
@@ -200,12 +225,11 @@ async function init() {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) { byId('registry-link').setAttribute('aria-current', 'page'); await showCatalogue(); return; }
     byId('catalogue').hidden = true;
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(id)) throw new Error('Invalid identifier. Return to the RI Registry to select an infrastructure.');
-    if (location.protocol === 'file:') { notice('To view an infrastructure page when opening this HTML file directly, select the corresponding Turtle file below.'); return; }
+    if (!validId(id)) throw new Error('Invalid identifier. Return to the RI Registry to select an infrastructure.');
     const sequence = ++loadSequence;
     const record = await fetchRecord(id);
     if (sequence === loadSequence) renderRecord(record);
-  } catch (error) { notice('Unable to load the description. ' + error.message + ' You can open a local Turtle file or return to the RI Registry.', true); }
+  } catch (error) { notice('Unable to load the registry. ' + error.message + ' Please try again or return to the RI Registry.', true); }
 }
 
 init();
