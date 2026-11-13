@@ -161,6 +161,7 @@ function pointFromWKT(wkt) {
 function renderRecord(record) {
   const { resource, metadata, values, value, title, name } = record;
   currentIRI = resource.value;
+  byId('edit').href = 'https://assets.ve.ismar.cnr.it/public/public_forms/sap-location-shacl-form.html?id=' + encodeURIComponent(resource.value.slice(registryIRI.length));
   document.title = name + ' · CNR ISMAR';
   byId('record-title').textContent = name;
   byId('record-title').lang = title?.language || 'en';

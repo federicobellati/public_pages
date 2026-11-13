@@ -57,6 +57,7 @@ button:disabled, input:disabled, select:disabled { opacity: .55; cursor: default
 .empty h2 { font-size: 21px; }
 .empty p { font-size: 14px; line-height: 1.7; }
 .record-heading { margin-bottom: 34px; }
+.record-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; } .record-actions .eyebrow { margin: 0; }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { padding: 5px 11px; border: 1px solid #32616a; border-radius: 5px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .record-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 52px; border-top: 1px solid var(--edge); padding-top: 34px; margin-bottom: 38px; }
