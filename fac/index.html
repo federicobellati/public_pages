@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#062b35">
+  <meta name="description" content="Explore the CNR ISMAR facilities registry: platforms, owners, site reference people and open semantic data.">
+  <title>Facilities · CNR ISMAR</title>
+  <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="assets/vendor/n3.min.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="type-labels.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="https://assets.ve.ismar.cnr.it/public/public_site/" aria-label="CNR ISMAR · Data and services"><img class="brand-cnr" src="assets/brand/cnr.svg" alt="" width="53" height="50"><span class="brand-divider" aria-hidden="true"></span><img class="brand-ismar" src="assets/brand/ismar.svg" alt="" width="50" height="51"><span class="brand-name" aria-hidden="true">CNR<br>ISMAR</span></a>
+    <span class="header-title">Facilities</span>
+  </header>
+  <main id="content" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://assets.ve.ismar.cnr.it/public/public_site/">Data and services</a><span aria-hidden="true">/</span><a id="som-link" href="https://assets.ve.ismar.cnr.it/public/public_site/som.html">SOM</a><span aria-hidden="true">/</span><a href="?" id="registry-link">Facilities Registry</a><span id="crumb-divider" aria-hidden="true" hidden>/</span><span id="crumb-current" aria-current="page" hidden></span></nav>
+    <div id="notice" class="notice" hidden><p id="status" role="status" aria-live="polite"></p><button id="retry" class="button" type="button" hidden>Try again</button><a id="error-back" href="?" hidden>← All facilities</a></div>
+    <section id="catalogue" aria-labelledby="catalogue-title">
+      <div class="catalogue-heading"><div><p class="eyebrow">CNR ISMAR · Registry</p><h1 id="catalogue-title" tabindex="-1">Facilities<span class="accent">.</span></h1><p class="intro">Explore the facilities behind our observations.<br>Platforms, owners, site reference people and open data.</p></div><div class="registry-count"><strong id="total-count">—</strong><span>registered facilities</span></div></div>
+      <div class="toolbar"><div class="search-field"><label for="search">Find a facility</label><div class="search-input"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="Search by name, code or description…" autocomplete="off" disabled></div></div><div class="type-field"><label for="type-filter">Facility type</label><select id="type-filter" disabled><option value="">All types</option></select></div><div class="sort-field"><label for="sort">Order by name</label><select id="sort" disabled><option value="asc">A → Z</option><option value="desc">Z → A</option></select></div><button id="refresh" class="button" type="button" disabled>Refresh <span aria-hidden="true">↻</span></button></div>
+      <div class="list-caption"><span id="results-count" role="status" aria-live="polite">Loading facilities…</span><span>Name / Facility type</span></div>
+      <ul id="facilities" class="facility-list" aria-label="Facilities"></ul>
+      <div id="empty" class="empty" hidden><h2>No facilities found</h2><p id="empty-description" class="muted"></p><button id="clear-search" class="button" type="button" hidden>Clear filters</button></div>
+      <p class="catalogue-note">Live data from the CNR ISMAR Facilities Registry.</p>
+    </section>
+    <article id="record" hidden aria-labelledby="record-title">
+      <div class="record-heading"><div class="record-actions"><p class="eyebrow">Facility</p><a id="edit" class="button" target="_blank" rel="noopener noreferrer" aria-label="Open the online editing form (opens in a new tab)" aria-describedby="edit-note">Edit <span aria-hidden="true">↗</span></a></div><h1 id="record-title" tabindex="-1"></h1><div id="record-tags" class="tags"></div></div>
+      <p id="edit-note" class="small muted">The online form does not load this facility automatically. Download the Turtle description under “Semantic description” and import it into the form.</p>
+      <div class="record-grid"><section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">About this facility</h2><p id="description" class="description"></p><div id="keywords" class="tags"></div><figure id="depiction" hidden><img id="facility-image" alt="" loading="lazy"><figcaption>Facility image provided in the registry.</figcaption></figure><div id="relations" class="relation-fields"></div></section><aside class="position-panel" aria-labelledby="facility-info-title"><p class="eyebrow">Facility profile</p><h2 id="facility-info-title">At a glance</h2><dl id="facility-fields"></dl></aside></div>
+      <section class="identity-panel" aria-labelledby="identity-title"><div><h2 id="identity-title">Persistent identifier</h2><a id="resource-iri" class="iri"></a></div><button id="copy-iri" class="button" type="button">Copy IRI</button><span id="copy-status" class="sr-only" role="status"></span></section>
+      <details class="disclosure" id="metadata"><summary><span><span class="eyebrow">02 / Documentation</span><span class="summary-title">Record metadata</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><p class="muted metadata-intro">Licensing, responsibilities and dates apply to the metadata document. Dates are shown as supplied by the registry.</p><dl id="metadata-fields" class="metadata-fields"></dl></div></details>
+      <details class="disclosure" id="source"><summary><span><span class="eyebrow">03 / Open data</span><span class="summary-title">Semantic description</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><div class="source-toolbar"><p class="muted">The RDF description retrieved from the registry, in Turtle format.</p><a id="download" class="button" download>Download .ttl <span aria-hidden="true">↓</span></a></div><pre tabindex="0" aria-label="Turtle description from the registry"><code id="turtle"></code></pre></div></details>
+      <div class="back-row"><a href="?">← All facilities</a><span class="small muted">CNR ISMAR · Facilities Registry</span></div>
+    </article>
+    <noscript><p class="notice">Enable JavaScript to load the facilities and their details from the registry.</p></noscript>
+  </main>
+  <footer class="site-footer"><span>CNR · ISMAR</span><span class="footer-caption">Facilities Registry</span><a href="https://www.ismar.cnr.it/">ISMAR <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>
+
