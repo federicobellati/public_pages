@@ -1,6 +1,6 @@
 # CNR ISMAR · Facilities Registry
 
-Pagina statica autonoma per esplorare il registro Facilities, nello stile della pagina [Locations](https://assets.ve.ismar.cnr.it/public/public_pages/loc/). Tutto il necessario è in questa cartella, pronta per un repository separato. Nessun file del portale principale è necessario.
+Pagina statica per esplorare il registro Facilities, nello stile della pagina [Locations](https://assets.ve.ismar.cnr.it/public/public_pages/loc/). I file del sito sono in questa cartella, pronta per un repository separato. La libreria RDF N3 viene caricata da CDN. Nessun file del portale principale è necessario.
 
 ## Pubblicazione
 
@@ -26,11 +26,9 @@ Le richieste non inviano cookie o credenziali. Fuseki deve consentire CORS dall'
 
 ## Edit
 
-Ogni scheda ha il pulsante **Edit**, che apre il [modulo Facility già disponibile online](https://assets.ve.ismar.cnr.it/public/public_forms/sap-facility-shacl-form.html) in una nuova scheda. La cartella contiene soltanto la pagina di visualizzazione e le sue risorse, senza una copia locale del modulo.
+Ogni scheda ha il pulsante **Edit**, che apre il [modulo Facility già disponibile online](https://assets.ve.ismar.cnr.it/public/public_forms/sap-facility-shacl-form.html) in una nuova scheda, passando l'identificativo della facility nel parametro `id`. La cartella contiene soltanto la pagina di visualizzazione e le sue risorse, senza una copia locale del modulo.
 
-**Limite del modulo online verificato:** non supporta il caricamento automatico di una facility tramite il parametro `id`. Il pulsante apre quindi il modulo senza passare un parametro che verrebbe ignorato. Questa limitazione è indicata anche nella scheda.
-
-Per modificare una facility con il modulo attuale, scaricare il suo `.ttl` dalla sezione **Semantic description** della scheda e importarlo nel modulo online mediante **Carica Turtle locale**. Il caricamento automatico richiederebbe un intervento sul modulo online, esterno a questa pagina di visualizzazione.
+Il modulo online aggiornato supporta il caricamento automatico tramite `id`, verificato il 15 novembre 2026 con `marina_di_portofino_2`. Il collegamento generato per questa facility termina con `sap-facility-shacl-form.html?id=marina_di_portofino_2`. La precedente nota sull'importazione manuale è stata rimossa dalla pagina.
 
 ## File e configurazione
 
@@ -39,9 +37,9 @@ Per modificare una facility con il modulo attuale, scaricare il suo `.ttl` dalla
 | `index.html`, `styles.css`, `app.js` | Elenco e schede di dettaglio |
 | `config.js` | Endpoint, namespace, collegamenti al portale, SOM, Locations e modulo online |
 | `type-labels.js` | Etichette SeaVoX L06 già incluse nel modulo ISMAR, versione 21 |
-| `assets/` | Loghi, font Manrope e lettore RDF N3 |
+| `assets/` | Loghi e font Manrope |
 | `licenses/` | Licenze e provenienza |
 
-Le risorse grafiche e software della visualizzazione sono locali: non occorre una CDN. I dati restano caricati in tempo reale dai servizi ISMAR. Il collegamento al modulo online è configurato in `editURL` in `config.js`.
+Loghi e font sono locali. Il lettore RDF N3 è caricato da `https://cdn.jsdelivr.net/npm/n3@1.26.0/browser/n3.min.js`, con versione fissata a 1.26.0 e senza copia locale. Occorre consentire l'accesso a jsDelivr dal browser. I dati restano caricati in tempo reale dai servizi ISMAR. Il collegamento al modulo online è configurato in `editURL` in `config.js`.
 
 I metadati descrivono il documento RDF; la relativa licenza non viene presentata come licenza dei dati osservativi. Le date senza indicazione del fuso sono mostrate come ricevute, senza assegnare un fuso arbitrario.

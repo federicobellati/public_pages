@@ -9,7 +9,7 @@
   <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="styles.css">
-  <script src="assets/vendor/n3.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/n3@1.26.0/browser/n3.min.js" crossorigin="anonymous" defer></script>
   <script src="config.js" defer></script>
   <script src="type-labels.js" defer></script>
   <script src="app.js" defer></script>
@@ -32,8 +32,7 @@
       <p class="catalogue-note">Live data from the CNR ISMAR Facilities Registry.</p>
     </section>
     <article id="record" hidden aria-labelledby="record-title">
-      <div class="record-heading"><div class="record-actions"><p class="eyebrow">Facility</p><a id="edit" class="button" target="_blank" rel="noopener noreferrer" aria-label="Open the online editing form (opens in a new tab)" aria-describedby="edit-note">Edit <span aria-hidden="true">↗</span></a></div><h1 id="record-title" tabindex="-1"></h1><div id="record-tags" class="tags"></div></div>
-      <p id="edit-note" class="small muted">The online form does not load this facility automatically. Download the Turtle description under “Semantic description” and import it into the form.</p>
+      <div class="record-heading"><div class="record-actions"><p class="eyebrow">Facility</p><a id="edit" class="button" target="_blank" rel="noopener noreferrer" aria-label="Open the online editing form (opens in a new tab)">Edit <span aria-hidden="true">↗</span></a></div><h1 id="record-title" tabindex="-1"></h1><div id="record-tags" class="tags"></div></div>
       <div class="record-grid"><section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">About this facility</h2><p id="description" class="description"></p><div id="keywords" class="tags"></div><figure id="depiction" hidden><img id="facility-image" alt="" loading="lazy"><figcaption>Facility image provided in the registry.</figcaption></figure><div id="relations" class="relation-fields"></div></section><aside class="position-panel" aria-labelledby="facility-info-title"><p class="eyebrow">Facility profile</p><h2 id="facility-info-title">At a glance</h2><dl id="facility-fields"></dl></aside></div>
       <section class="identity-panel" aria-labelledby="identity-title"><div><h2 id="identity-title">Persistent identifier</h2><a id="resource-iri" class="iri"></a></div><button id="copy-iri" class="button" type="button">Copy IRI</button><span id="copy-status" class="sr-only" role="status"></span></section>
       <details class="disclosure" id="metadata"><summary><span><span class="eyebrow">02 / Documentation</span><span class="summary-title">Record metadata</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><p class="muted metadata-intro">Licensing, responsibilities and dates apply to the metadata document. Dates are shown as supplied by the registry.</p><dl id="metadata-fields" class="metadata-fields"></dl></div></details>

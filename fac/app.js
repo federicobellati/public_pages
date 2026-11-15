@@ -184,7 +184,9 @@ function resourceLink(term) {
 function renderRecord(record) {
   const { resource, metadata, values, value, title, name } = record;
   currentIRI = resource.value;
-  byId('edit').href = settings.editURL;
+  const editURL = new URL(settings.editURL, document.baseURI);
+  editURL.searchParams.set('id', resource.value.slice(registryIRI.length));
+  byId('edit').href = editURL.href;
   document.title = name + ' · CNR ISMAR';
   byId('record-title').textContent = name;
   byId('record-title').lang = title?.language || 'en';
