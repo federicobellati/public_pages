@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#062b35">
+  <meta name="description" content="Explore the CNR ISMAR sensor models registry: manufacturers, measurement components, specifications and open semantic data.">
+  <title>Sensor models · CNR ISMAR</title>
+  <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/n3.min.js" defer></script>
+  <script src="vendor/jsonld.min.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="labels.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="https://assets.ve.ismar.cnr.it/public/public_site/" aria-label="CNR ISMAR · Data and services"><img class="brand-cnr" src="assets/brand/cnr.svg" alt="" width="53" height="50"><span class="brand-divider" aria-hidden="true"></span><img class="brand-ismar" src="assets/brand/ismar.svg" alt="" width="50" height="51"><span class="brand-name" aria-hidden="true">CNR<br>ISMAR</span></a><span class="header-title">Sensor models</span></header>
+  <main id="content" tabindex="-1">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://assets.ve.ismar.cnr.it/public/public_site/">Data and services</a><span aria-hidden="true">/</span><a id="som-link" href="https://assets.ve.ismar.cnr.it/public/public_site/som.html">SOM</a><span aria-hidden="true">/</span><a href="?" id="registry-link">Sensor Models Registry</a><span id="crumb-divider" aria-hidden="true" hidden>/</span><span id="crumb-current" aria-current="page" hidden></span></nav>
+    <div id="notice" class="notice" hidden><p id="status" role="status" aria-live="polite"></p><button id="retry" class="button" type="button" hidden>Try again</button><a id="error-back" href="?" hidden>All sensor models</a></div>
+    <section id="catalogue" aria-labelledby="catalogue-title">
+      <div class="catalogue-heading"><div><p class="eyebrow">CNR ISMAR · Registry</p><h1 id="catalogue-title" tabindex="-1">Sensor models<span class="accent">.</span></h1><p class="intro">Explore the instruments behind our observations.<br>Manufacturers, measurement components and open data.</p></div><div class="registry-count"><strong id="total-count">—</strong><span>registered models</span></div></div>
+      <div class="toolbar"><div class="search-field"><label for="search">Find a sensor model</label><div class="search-input"><span aria-hidden="true">⌕</span><input type="search" id="search" placeholder="Search by name, manufacturer or description…" autocomplete="off" disabled></div></div><div class="type-field"><label for="manufacturer-filter">Manufacturer</label><select id="manufacturer-filter" disabled><option value="">All manufacturers</option></select></div><div class="sort-field"><label for="sort">Order by name</label><select id="sort" disabled><option value="asc">A – Z</option><option value="desc">Z – A</option></select></div><button id="refresh" class="button" type="button" disabled>Refresh</button></div>
+      <div class="list-caption"><span id="results-count" role="status" aria-live="polite">Loading sensor models…</span><span>Name / Manufacturer</span></div>
+      <ul id="models" class="facility-list" aria-label="Sensor models"></ul>
+      <div id="empty" class="empty" hidden><h2>No sensor models found</h2><p id="empty-description" class="muted"></p><button id="clear-search" class="button" type="button" hidden>Clear filters</button></div>
+      <nav id="pagination" class="pagination" aria-label="Catalogue pages" hidden><button id="previous" class="button" type="button">Previous</button><span id="page-status" role="status" aria-live="polite"></span><button id="next" class="button" type="button">Next</button></nav>
+      <p class="catalogue-note">Live data from the CNR ISMAR Sensor Models Registry.</p>
+    </section>
+    <article id="record" hidden aria-labelledby="record-title">
+      <div class="record-heading"><div class="record-actions"><p class="eyebrow">Sensor model</p><a id="edit" class="button" target="_blank" rel="noopener noreferrer" aria-label="Open the online editing form (opens in a new tab)" hidden>Edit</a></div><h1 id="record-title" tabindex="-1"></h1><div id="record-tags" class="tags"></div></div>
+      <div class="record-grid"><section class="overview" aria-labelledby="overview-title"><p class="eyebrow section-number">01 / Overview</p><h2 id="overview-title">About this model</h2><div id="description" class="description"></div><figure id="depiction" hidden><img id="model-image" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>Model image provided in the registry.</figcaption></figure><dl id="references" class="relation-fields"></dl></section><aside class="position-panel" aria-labelledby="model-info-title"><p class="eyebrow">Model profile</p><h2 id="model-info-title">At a glance</h2><dl id="model-fields"></dl></aside></div>
+      <section class="identity-panel" aria-labelledby="identity-title"><div><h2 id="identity-title">Persistent identifier</h2><a id="resource-iri" class="iri"></a></div><button id="copy-iri" class="button" type="button">Copy IRI</button><span id="copy-status" class="sr-only" role="status"></span></section>
+      <details class="disclosure" id="specifications"><summary><span><span class="eyebrow">02 / Specifications</span><span class="summary-title">Technical specifications</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><dl id="technical-fields" class="metadata-fields"></dl></div></details>
+      <section class="components-section" aria-labelledby="components-title"><p class="eyebrow section-number">03 / Measurements</p><div class="components-heading"><h2 id="components-title">Measurement components</h2><span id="component-count" class="muted"></span></div><p id="no-components" class="muted" hidden>No measurement components are described in this record.</p><div id="components"></div></section>
+      <details class="disclosure" id="additional"><summary><span><span class="eyebrow">04 / Description</span><span class="summary-title">Additional record properties</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><dl id="additional-fields" class="metadata-fields"></dl></div></details>
+      <details class="disclosure" id="metadata"><summary><span><span class="eyebrow">05 / Documentation</span><span class="summary-title">Record metadata</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><p class="muted metadata-intro">Licensing, responsibilities and dates apply to the metadata document. Dates are shown as supplied by the registry.</p><div id="metadata-documents"></div></div></details>
+      <details class="disclosure" id="source"><summary><span><span class="eyebrow">06 / Open data</span><span class="summary-title">Semantic description</span></span><span class="plus" aria-hidden="true">+</span></summary><div class="disclosure-body"><div class="source-toolbar"><p class="muted">The RDF description retrieved from the registry, in Turtle format.</p><a id="download" class="button" download>Download .ttl</a></div><pre tabindex="0" aria-label="Turtle description from the registry"><code id="turtle"></code></pre></div></details>
+      <p class="catalogue-note">Vocabulary labels are retrieved when available. Every linked term retains its original IRI.</p>
+      <div class="back-row"><a href="?">All sensor models</a><span class="small muted">CNR ISMAR · Sensor Models Registry</span></div>
+    </article>
+    <noscript><p class="notice">Enable JavaScript to load the sensor models and their details from the registry.</p></noscript>
+  </main>
+  <footer class="site-footer"><span>CNR · ISMAR</span><span class="footer-caption">Sensor Models Registry</span><a href="https://www.ismar.cnr.it/">ISMAR</a></footer>
+</body>
+</html>
