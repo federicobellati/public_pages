@@ -38,6 +38,9 @@ button, .secondary { display: inline-flex; justify-content: center; align-items:
 button:hover { background: #a2eddf; }
 .help, #status { color: var(--muted); font-size: 18px; margin: 14px 0 0; }
 #status:empty { display: none; }
+#status.is-loading::before { content: ""; display: inline-block; width: 20px; height: 20px; margin-right: 10px; border: 3px solid var(--edge); border-top-color: var(--aqua); border-radius: 50%; vertical-align: middle; animation: analysis-spin .9s linear infinite; }
+@keyframes analysis-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #status.is-loading::before { animation: none; } }
 #error { margin: 16px 0 0; color: #ffcbc3; overflow-wrap: anywhere; }
 .secondary { background: transparent; border-color: #8aafb3; color: var(--aqua); font-size: 16px; font-weight: 500; }
 .secondary:hover { background: var(--edge); color: var(--text); }

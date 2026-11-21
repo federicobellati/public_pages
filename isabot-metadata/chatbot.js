@@ -2,6 +2,7 @@
 const API_BASE = document.body.dataset.apiBase.replace(/\/$/, "");
 const form = document.getElementById("analysis-form"), fields = document.getElementById("analysis-fields"), policy = document.getElementById("policy"), submit = document.getElementById("analyze");
 const status = document.getElementById("status"), error = document.getElementById("error"), retry = document.getElementById("retry-policies");
+const analysisTime = document.getElementById("analysis-time");
 const report = document.getElementById("report"), empty = document.getElementById("report-empty"), download = document.getElementById("download"), reportSection = document.querySelector(".report-section");
 let reportUrl = null, busy = false;
 
@@ -25,6 +26,9 @@ form.addEventListener("submit", async event => {
   if (busy || !form.reportValidity()) return;
   busy = true; fields.disabled = true; error.hidden = true; download.hidden = true; report.hidden = true; empty.hidden = true;
   reportSection.setAttribute("aria-busy", "true"); status.textContent = "Analisi in corso. L’elaborazione può richiedere alcuni minuti: mantieni aperta questa pagina."; submit.textContent = "Analisi in corso…";
+  const started = performance.now(), elapsed = () => { const seconds = Math.floor((performance.now() - started) / 1000); return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`; };
+  status.classList.add("is-loading"); analysisTime.hidden = false; analysisTime.textContent = "Tempo trascorso: 0 s";
+  const timer = setInterval(() => { analysisTime.textContent = `Tempo trascorso: ${elapsed()}`; }, 1000);
   if (reportUrl) { URL.revokeObjectURL(reportUrl); reportUrl = null; }
   try {
     const response = await fetch(`${API_BASE}/local-link-bot`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "text/markdown" }, credentials: "omit", body: JSON.stringify({ url: document.getElementById("dataset-url").value.trim(), policy: policy.value }) });
@@ -39,10 +43,11 @@ form.addEventListener("submit", async event => {
     report.querySelectorAll("table").forEach((table, index) => { const wrapper = document.createElement("div"); wrapper.className = "table-scroll"; wrapper.tabIndex = 0; wrapper.setAttribute("role", "region"); wrapper.setAttribute("aria-label", `Tabella ${index + 1} del report, scorrimento orizzontale`); table.before(wrapper); wrapper.append(table); });
     report.querySelectorAll("a").forEach(link => { const href = link.getAttribute("href"); if (href && !/^https?:\/\//i.test(href) && !href.startsWith("#")) link.removeAttribute("href"); link.target = "_blank"; link.rel = "noopener noreferrer"; });
     reportUrl = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }));
-    download.href = reportUrl; download.hidden = false; report.hidden = false; status.textContent = "Analisi completata. Il report è disponibile qui sotto e può essere scaricato in Markdown.";
+    download.href = reportUrl; download.hidden = false; report.hidden = false; status.textContent = `Analisi completata in ${elapsed()}. Il report è disponibile qui sotto e può essere scaricato in Markdown.`;
   } catch (failure) {
     status.textContent = ""; error.textContent = failure instanceof TypeError ? "Impossibile contattare il servizio. Verifica la connessione e riprova." : failure.message; error.hidden = false; empty.hidden = false;
   } finally {
+    clearInterval(timer); status.classList.remove("is-loading"); analysisTime.hidden = true;
     busy = false; fields.disabled = false; submit.textContent = "Analizza metadati"; reportSection.setAttribute("aria-busy", "false");
   }
 });

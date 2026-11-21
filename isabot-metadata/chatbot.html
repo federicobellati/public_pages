@@ -8,10 +8,10 @@
   <title>Verifica dei metadati · IS-mA-BOT · CNR ISMAR</title>
   <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="chatbot.css">
+  <link rel="stylesheet" href="chatbot.css?v=20261121-1">
   <script src="assets/vendor/marked.umd.js" defer></script>
   <script src="assets/vendor/purify.min.js" defer></script>
-  <script src="chatbot.js" defer></script>
+  <script src="chatbot.js?v=20261121-1" defer></script>
 </head>
 <body data-api-base="https://genapi.ve.ismar.cnr.it">
   <a class="skip-link" href="#contenuto">Vai alla verifica dei metadati</a>
@@ -45,6 +45,7 @@
         <p id="analysis-help" class="help">L’analisi può richiedere alcuni minuti.</p>
       </fieldset>
       <p id="status" role="status" aria-live="polite">Caricamento delle policy…</p>
+      <p id="analysis-time" class="help" role="timer" aria-live="off" hidden></p>
       <p id="error" role="alert" hidden></p>
       <button id="retry-policies" class="secondary" type="button" hidden>Riprova a caricare le policy</button>
       <noscript><p>Per usare questo servizio devi abilitare JavaScript nel browser.</p></noscript>
