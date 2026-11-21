@@ -4,6 +4,6 @@ window.SENSOR_MODELS_REGISTRY = {
   registryIRI: 'https://w3id.org/cnr-ismar/sensors-models-registry/',
   portalURL: 'https://assets.ve.ismar.cnr.it/public/public_site/',
   somURL: 'https://assets.ve.ismar.cnr.it/public/public_site/som.html',
-  editURL: 'https://assets.ve.ismar.cnr.it/public/public_forms/sap-sesnor-shacl-form.html',
+  editURL: 'https://assets.ve.ismar.cnr.it/public/public_forms/sap-sensor-shacl-form.html',
   pageSize: 40
 };
