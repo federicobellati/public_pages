@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#062b35">
+  <meta name="description" content="Interroga il corpus scientifico di Alvise Benetazzo e consulta o scarica la risposta.">
+  <title>Interroga il corpus · IS-mA-BOT · CNR ISMAR</title>
+  <link rel="icon" href="assets/brand/ismar.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/manrope-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="chatbot.css?v=20261122-1">
+  <script src="assets/vendor/marked.umd.js" defer></script>
+  <script src="assets/vendor/purify.min.js" defer></script>
+  <script src="chatbot.js?v=20261122-1" defer></script>
+</head>
+<body data-api-base="https://genapi.ve.ismar.cnr.it">
+  <a class="skip-link" href="#contenuto">Vai al modulo per la domanda</a>
+  <header class="site-header">
+    <a class="brand" href="https://assets.ve.ismar.cnr.it/public/public_site/" aria-label="CNR ISMAR · pagina iniziale">
+      <img class="brand-cnr" src="assets/brand/cnr.svg" alt="" width="53" height="50">
+      <span class="brand-divider" aria-hidden="true"></span>
+      <img class="brand-ismar" src="assets/brand/ismar.svg" alt="" width="50" height="51">
+      <span class="brand-name" aria-hidden="true">CNR<br>ISMAR</span>
+    </a>
+    <span class="section-name">IS-mA-BOT</span>
+  </header>
+  <main id="contenuto">
+    <nav class="breadcrumb" aria-label="Percorso di navigazione">
+      <a class="back-link" href="https://assets.ve.ismar.cnr.it/public/public_site/"><img src="assets/icons/arrow-right.svg" width="20" height="20" alt="">Dati e servizi</a>
+      <span aria-hidden="true">›</span><span aria-current="page">Interroga il corpus</span>
+    </nav>
+    <div class="intro">
+      <h1>Interroga il corpus</h1>
+      <p class="subtitle">Esplora gli articoli di Alvise Benetazzo</p>
+      <p>Scrivi una domanda sul corpus scientifico e consulta la risposta con i riferimenti alle fonti.</p>
+    </div>
+    <form id="analysis-form" aria-label="Domanda sul corpus scientifico">
+      <fieldset id="analysis-fields">
+        <label for="question">La tua domanda</label>
+        <textarea id="question" name="question" rows="4" required maxlength="4000" aria-describedby="question-help analysis-help" placeholder="Ad esempio: qual è l'impatto delle onde superficiali sulla circolazione oceanica?"></textarea>
+        <div class="question-actions"><p id="question-help" class="help">Fino a 4.000 caratteri. Ogni domanda è indipendente.</p><button id="analyze" type="submit">Invia domanda</button></div>
+        <p id="analysis-help" class="help">La ricerca può richiedere diversi minuti. Mantieni aperta questa pagina durante l'elaborazione.</p>
+      </fieldset>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p id="analysis-time" class="help" role="timer" aria-live="off" hidden></p>
+      <p id="error" role="alert" hidden></p>
+      <noscript><p>Per usare questo servizio devi abilitare JavaScript nel browser.</p></noscript>
+    </form>
+    <section class="report-section" aria-labelledby="report-title" aria-busy="false">
+      <div class="report-heading"><h2 id="report-title">Risposta</h2><a id="download" class="secondary" download="risposta.md" hidden>Scarica risposta .md</a></div>
+      <p id="response-time" class="help" hidden></p>
+      <div id="report-empty"><p>La risposta apparirà qui al termine della ricerca e potrai scaricarla in Markdown.</p></div>
+      <article id="report" class="markdown" aria-label="Risposta completa" hidden></article>
+    </section>
+  </main>
+  <footer class="site-footer"><span>CNR · ISMAR</span><a href="https://www.ismar.cnr.it/">ISMAR</a></footer>
+</body>
+</html>
