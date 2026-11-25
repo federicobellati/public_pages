@@ -42,7 +42,7 @@ const BASE = 'https://seas-frost.ve.ismar.cnr.it/FROST-Server/v1.1';
 // QARTOD flags: flag -> [colour, label]  (same colours as main_QC_CTD)
 const FLAGS = {1: ['#2ca02c', 'Pass'], 2: ['#ff7f0e', 'Not evaluated'], 3: ['#ffd700', 'Suspect'], 4: ['#d62728', 'Fail'], 9: ['#7f7f7f', 'Missing']}, ORDER = [1, 2, 3, 4, 9], OTHER = ['#adb5bd', 'Other'];
 // enabled tests, in the order of qc_secondary_flag_list (tests_enabled in qc_qartod_params.yml)
-const TESTS = ['time_gap', 'syntax', 'location', 'gross_range', 'spike', 'rate_of_change', 'flat_line'];
+const TESTS = ['time_gap', 'syntax', 'location', 'gross_range', 'climatology', 'spike', 'rate_of_change', 'flat_line'];
 const SUFFIX = '_qc';  // only datastreams whose id ends with this are listed
 const $ = id => document.getElementById(id), H = 168, iso = t => new Date(t).toISOString().slice(0, 19), ms = t => Date.parse(String(t).replace(' ', 'T').slice(0, 19) + 'Z');
 let end = Date.now(), seq = 0, rows = [], tops = [];
@@ -71,7 +71,7 @@ function shift(d) {
 
 async function getAll(url) {
   let out = [];
-  while (url) { const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`); const j = await r.json(); out = out.concat(j.value || []); url = j['@iot.nextLink']; }
+  while (url) { const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`); const j = await r.json(); out = out.concat(j.value || []); url = j['@iot.nextLink']?.replace(/^http:/, 'https:'); }  // FROST returns http:// next links
   return out;
 }
 
@@ -110,7 +110,7 @@ async function load(view) {
     Plotly.react('plot', traces, {
       paper_bgcolor: '#04232c', plot_bgcolor: '#04232c', font: {family: 'Manrope, Segoe UI, Arial, sans-serif', color: '#f4f7f6', size: mob ? 11 : 13}, height: mob ? 560 : 720, hovermode: 'closest', dragmode: 'pan', margin: {l: mob ? 100 : 150, r: 20, t: 20, b: 50},
       legend: {title: {text: 'Primary QC flag'}, itemsizing: 'constant', x: .995, y: .995, xanchor: 'right', yanchor: 'top', bgcolor: 'rgba(6,43,53,.85)', bordercolor: '#28545f', borderwidth: 1},
-      xaxis: {...ax, anchor: 'y2', range: view ? view.map(iso) : [iso(end - 24 * 3600e3), iso(end)], title: {text: 'Time (UTC)'}},
+      xaxis: {...ax, anchor: 'y2', type: 'date', range: view ? view.map(iso) : [iso(end - 24 * 3600e3), iso(end)], title: {text: 'Time (UTC)'}},
       yaxis: {...ax, domain: [.36, 1], fixedrange: true, title: {text: unit || 'value'}},
       yaxis2: {...ax, domain: [0, .29], fixedrange: true, type: 'category', categoryorder: 'array', categoryarray: labs, autorange: 'reversed', showgrid: false, title: {text: 'QC tests'}}
     }, {responsive: true, displayModeBar: false, scrollZoom: true});
