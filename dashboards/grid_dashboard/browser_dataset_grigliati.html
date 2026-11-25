@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Esplora i dati grigliati</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.135.0/Build/Cesium/Widgets/widgets.css">
+  <style>
+    :root { color-scheme: dark; --bg: #0b141e; --panel: #101f2c; --line: #273b4b; --text: #edf4f7; --muted: #aabcca; --grid: #59dbcf; --tds: #c2adff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--text); background: var(--bg); font: 15px/1.45 system-ui, sans-serif; }
+    button, input { font: inherit; }
+    button, a, summary { cursor: pointer; }
+    a { color: #8be7df; }
+    :focus-visible { outline: 2px solid #8be7df; outline-offset: 3px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 26px; border-bottom: 1px solid var(--line); }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(1.25rem, 3vw, 1.75rem); letter-spacing: -.025em; }
+    h2 { font-size: 1rem; }
+    button { padding: 7px 12px; color: var(--text); border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+    button:hover { border-color: #7495a8; }
+    button:disabled { cursor: default; opacity: .5; }
+    main { display: grid; grid-template-columns: minmax(270px, 330px) 1fr; height: calc(100dvh - 76px); min-height: 430px; }
+    aside { min-height: 0; display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); }
+    .filters, #sources { padding: 16px; }
+    #search { width: 100%; margin: 8px 0 12px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--text); background: var(--bg); }
+    .filters label { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; }
+    input[type=checkbox] { accent-color: #5ac9be; }
+    .erddap { color: var(--grid); }
+    .thredds { color: var(--tds); }
+    #status { display: block; margin-top: 12px; color: var(--muted); font-size: .87rem; }
+    #datasets { flex: 1; overflow: auto; list-style: none; margin: 0; padding: 0 8px; }
+    #datasets button { display: grid; gap: 4px; width: 100%; padding: 10px 8px; text-align: left; overflow-wrap: anywhere; background: transparent; border-color: transparent; }
+    #datasets li + li { border-top: 1px solid var(--line); }
+    #datasets button:hover, #datasets button[aria-pressed=true] { background: #192e3d; }
+    .meta { color: var(--muted); font-size: .78rem; }
+    #sources { border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); max-height: 37%; overflow: auto; }
+    #source-list { padding-left: 16px; margin: 8px 0 0; }
+    #source-list li { overflow-wrap: anywhere; margin-bottom: 7px; }
+    #source-list details { margin-top: 4px; }
+    .map { position: relative; min-width: 0; min-height: 0; background: #081523; }
+    #globe { position: absolute; inset: 0; z-index: 0; }
+    #globe canvas, #globe.leaflet-grab, #globe .leaflet-interactive {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath d='M3 3v16l4.3-4.3 3 6 3-1.5-3-6H17z' fill='white' stroke='%23111827' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3, default;
+    }
+    #globe canvas:active, .leaflet-dragging #globe.leaflet-grab,
+    .leaflet-dragging #globe .leaflet-interactive { cursor: grabbing; }
+    .toolbar { position: absolute; z-index: 1; top: 14px; right: 14px; display: flex; gap: 6px; }
+    #map-message, #detail { position: absolute; z-index: 1; left: 14px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    #map-message { top: 14px; max-width: calc(100% - 28px); }
+    #detail { bottom: 32px; max-width: min(430px, calc(100% - 28px)); overflow-wrap: anywhere; }
+    #detail h2 { padding-right: 32px; }
+    #detail p, #detail-links { margin-top: 6px; }
+    #close-detail { position: absolute; right: 7px; top: 7px; padding: 2px 8px; }
+    #detail-links { display: flex; flex-wrap: wrap; gap: 5px 14px; }
+    @media (max-width: 690px) {
+      header { padding: 12px; }
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(320px, 57dvh) minmax(270px, auto); height: auto; }
+      aside { grid-row: 2; max-height: 56dvh; border-right: 0; }
+      .map { grid-row: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Esplora i dati grigliati</h1><button id="reload" type="button">Aggiorna cataloghi</button></header>
+  <main>
+    <aside aria-label="Dataset e sorgenti">
+      <div class="filters">
+        <label for="search">Cerca un dataset</label>
+        <input id="search" type="search" autocomplete="off" placeholder="Nome o identificatore">
+        <div aria-label="Sorgenti visualizzate">
+          <label class="erddap"><input id="filter-erddap" type="checkbox" checked> ERDDAP</label>
+          <label class="thredds"><input id="filter-thredds" type="checkbox" checked> THREDDS</label>
+        </div>
+        <output id="status" aria-live="polite">Lettura dei cataloghi…</output>
+      </div>
+      <ul id="datasets" aria-label="Dataset sulla mappa"></ul>
+      <div id="sources"><h2>Stato delle sorgenti</h2><ul id="source-list"></ul></div>
+    </aside>
+    <section class="map" aria-label="Mappa delle coperture geografiche">
+      <div id="globe"></div>
+      <div class="toolbar"><button id="fit" type="button" disabled>Inquadra tutti</button></div>
+      <p id="map-message" hidden></p>
+      <article id="detail" aria-label="Dataset selezionato" hidden>
+        <button id="close-detail" type="button" aria-label="Chiudi dettagli">×</button>
+        <h2 id="detail-title"></h2><p class="meta" id="detail-source"></p>
+        <p id="detail-bounds"></p><div id="detail-links"></div>
+      </article>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.135.0/Build/Cesium/Cesium.js"></script>
+  <script>
+    'use strict';
+
+    const DATA_SERVERS = [
+      'https://erddap-itineris.ve.ismar.cnr.it/erddap/info/index.html?page=1&itemsPerPage=1000',
+      'https://thredds.ve.ismar.cnr.it/thredds/catalog/catalog.html',
+    ];
+
+    // Facoltativo. Se il server non consente CORS, un reverse proxy sullo stesso
+    // host della pagina può inoltrare un prefisso verso l'origine indicata.
+    // Esempio: ['https://data.example.org', '/proxy/dati'] inoltra
+    // /proxy/dati/percorso?query a https://data.example.org/percorso?query.
+    const SAME_ORIGIN_ROUTES = new Map();
+
+    const GRID_FILE = /\.(?:nc|nc4|cdf|ncml|netcdf|grib[12]?|grb[12]?|hdf[45]?|he5)(?:\.gz)?$/i;
+    const XLINK = 'http://www.w3.org/1999/xlink';
+    const EXTENT_BORDER = '#a4aab0';
+    const SELECTED_BORDER = '#ffdf77';
+    const BASEMAP_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg';
+    const BASEMAP_MAX_ZOOM = 14;
+    const BASEMAP_ATTRIBUTION = '<a href="https://cloudless.eox.at/">EOxCloudless</a> by <a href="https://eox.at/">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2016 &amp; 2017)';
+    const $ = id => document.getElementById(id);
+    const children = (node, name) => Array.from(node?.children ?? []).filter(child => child.localName === name);
+    const first = (node, name) => children(node, name)[0];
+    const childText = (node, name) => first(node, name)?.textContent.trim();
+    const descendants = (node, name) => Array.from(node.getElementsByTagNameNS('*', name));
+    const number = value => value == null || String(value).trim() === '' ? NaN : Number(value);
+
+    function httpUrl(value, base) {
+      try {
+        const url = new URL(value, base);
+        if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) return url;
+      } catch { /* URL incompleto o non valido. */ }
+    }
+
+    async function fetchText(url, { optional = false } = {}) {
+      const route = SAME_ORIGIN_ROUTES.get(url.origin);
+      const target = route ? `${route}${url.pathname}${url.search}` : url.href;
+      const response = await fetch(target, { signal: AbortSignal.timeout(optional ? 12000 : 22000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status} · ${url.pathname}`);
+      return response.text();
+    }
+
+    function parseXml(text) {
+      const xml = new DOMParser().parseFromString(text, 'application/xml');
+      if (xml.querySelector('parsererror')) throw new Error('XML non valido');
+      return xml.documentElement;
+    }
+
+    async function parallel(items, limit, callback) {
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (cursor < items.length) await callback(items[cursor++]);
+      });
+      await Promise.all(workers);
+    }
+
+    function bbox(west, south, east, north) {
+      [west, south, east, north] = [west, south, east, north].map(number);
+      if (![west, south, east, north].every(Number.isFinite) || Math.abs(west) > 360 || Math.abs(east) > 360 || south < -90.001 || north > 90.001 || south >= north || east === west) return;
+      const width = east - west;
+      if (Math.abs(width) >= 359.99999) return { west: -180, south: Math.max(south, -90), east: 180, north: Math.min(north, 90) };
+      const longitude = value => ((value + 180) % 360 + 360) % 360 - 180;
+      return { west: longitude(west), south: Math.max(south, -90), east: longitude(east), north: Math.min(north, 90) };
+    }
+
+    function unionBoxes(boxes) {
+      if (!boxes.length) return;
+      if (boxes.length === 1) return boxes[0];
+      const south = Math.min(...boxes.map(box => box.south));
+      const north = Math.max(...boxes.map(box => box.north));
+      const segments = boxes.flatMap(({ west, east }) => west <= east ? [[west, east]] : [[west, 180], [-180, east]]);
+      segments.sort((a, b) => a[0] - b[0]);
+      const merged = [];
+      for (const [start, end] of segments) {
+        const last = merged.at(-1);
+        if (last && start <= last[1]) last[1] = Math.max(last[1], end);
+        else merged.push([start, end]);
+      }
+      let gap = -1, west = -180, east = 180;
+      merged.forEach(([start, end], index) => {
+        const next = merged[(index + 1) % merged.length][0];
+        const width = next - end + (index === merged.length - 1 ? 360 : 0);
+        if (width > gap) { gap = width; west = next; east = end; }
+      });
+      return gap <= 1e-8 ? { west: -180, south, east: 180, north } : { west, south, east, north };
+    }
+
+    function erddapRoot(url) {
+      const path = url.pathname.replace(/\/(?:info|griddap|tabledap|search)(?:\/.*)?$/i, '')
+        .replace(/\/[^/]+\.(?:html|json)$/i, '');
+      return new URL(`${path.replace(/\/$/, '')}/`, url.origin);
+    }
+
+    function erddapTable(text) {
+      const { table } = JSON.parse(text);
+      if (!Array.isArray(table?.columnNames) || !Array.isArray(table.rows)) throw new Error('Tabella ERDDAP non riconosciuta');
+      return table.rows.map(row => Object.fromEntries(table.columnNames.map((name, index) => [name, row[index]])));
+    }
+
+    function rangeBox(minLon, minLat, maxLon, maxLat, lonRange, latRange) {
+      return bbox(minLon ?? lonRange?.[0], minLat ?? latRange?.[0], maxLon ?? lonRange?.[1], maxLat ?? latRange?.[1]);
+    }
+
+    function numericRange(value) {
+      const values = String(value ?? '').trim().split(/[\s,]+/).map(number);
+      if (values.length === 2 && values.every(Number.isFinite)) return values;
+    }
+
+    function globalBox(attrs, lonRange, latRange) {
+      return rangeBox(attrs.geospatial_lon_min, attrs.geospatial_lat_min, attrs.geospatial_lon_max, attrs.geospatial_lat_max, lonRange, latRange)
+        || bbox(lonRange?.[0], latRange?.[0], lonRange?.[1], latRange?.[1]);
+    }
+
+    function erddapInfoBox(rows) {
+      const globals = Object.create(null), axes = Object.create(null);
+      for (const row of rows) {
+        if (row['Row Type'] !== 'attribute') continue;
+        const name = row['Variable Name'];
+        if (name === 'NC_GLOBAL') globals[row['Attribute Name']] = row.Value;
+        if (row['Attribute Name'] === 'actual_range') axes[name] = numericRange(row.Value);
+      }
+      return globalBox(globals, axes.longitude, axes.latitude);
+    }
+
+    async function erddapIndex(root, configured) {
+      const list = new URL('info/index.json', root);
+      const size = Number(configured.searchParams.get('itemsPerPage')) || 1000;
+      const rows = [], seen = new Set();
+      for (let page = 1; ; page++) {
+        list.searchParams.set('page', page);
+        list.searchParams.set('itemsPerPage', size);
+        let batch;
+        try { batch = erddapTable(await fetchText(list)); }
+        catch (error) { if (page > 1 && /HTTP 404/.test(error.message)) break; throw error; }
+        if (!batch.length) break;
+        const start = seen.size;
+        for (const row of batch) {
+          const datasetID = row['Dataset ID'] || row.datasetID;
+          if (!datasetID || seen.has(datasetID)) continue;
+          seen.add(datasetID);
+          rows.push({ datasetID, title: row.Title || row.title, griddap: row.GridDAP || row.griddap });
+        }
+        if (seen.size === start || batch.length < size) break;
+      }
+      return rows;
+    }
+
+    async function readErddap(root, source, add) {
+      const fields = 'datasetID,title,griddap,minLongitude,maxLongitude,minLatitude,maxLatitude';
+      let rows;
+      try {
+        rows = erddapTable(await fetchText(new URL(`tabledap/allDatasets.json?${fields}&griddap!=""`, root)));
+      } catch (error) {
+        // Il vincolo è un'ottimizzazione. Il filtro griddap è applicato anche nel client.
+        try { rows = await erddapIndex(root, source.url); }
+        catch { throw error; }
+      }
+      source.kind = 'ERDDAP';
+      const emitted = new Set();
+      await parallel(rows.filter(row => row.datasetID && row.griddap), 5, async row => {
+        const page = httpUrl(row.griddap, root);
+        if (!page || !/\/griddap\//i.test(page.pathname) || emitted.has(row.datasetID)) return;
+        emitted.add(row.datasetID);
+        const metadata = new URL(`info/${encodeURIComponent(row.datasetID)}/index.json`, root);
+        let box = bbox(row.minLongitude, row.minLatitude, row.maxLongitude, row.maxLatitude);
+        if (!box) {
+          try { box = erddapInfoBox(erddapTable(await fetchText(metadata, { optional: true }))); } catch { /* Copertura non leggibile. */ }
+        }
+        const info = new URL(metadata);
+        info.pathname = info.pathname.replace(/\.json$/, '.html');
+        if (!box) { source.missing.push(row.title || row.datasetID); return; }
+        add({ id: row.datasetID, title: row.title || row.datasetID, box, source, page, catalog: info, files: 1 });
+      });
+      return true;
+    }
+
+    function threddsEndpoint(url) {
+      const catalog = new URL(url);
+      catalog.search = '';
+      catalog.hash = '';
+      if (/\.html?$/i.test(catalog.pathname)) catalog.pathname = catalog.pathname.replace(/\.html?$/i, '.xml');
+      else if (!/\.xml$/i.test(catalog.pathname)) {
+        const path = catalog.pathname.replace(/\/$/, '');
+        catalog.pathname = path ? `${path}${/\/thredds$/i.test(path) ? '/catalog' : ''}/catalog.xml` : '/thredds/catalog/catalog.xml';
+      }
+      return catalog;
+    }
+
+    function catalogPage(url, id) {
+      const page = new URL(url);
+      page.pathname = page.pathname.replace(/\.xml$/i, '.html');
+      if (id) page.searchParams.set('dataset', id);
+      return page;
+    }
+
+    function catalogBox(node) {
+      const coverage = first(node, 'geospatialCoverage');
+      if (!coverage || coverage.getAttribute('global') === 'true') {
+        if (coverage) return bbox(-180, -90, 180, 90);
+        return;
+      }
+      const ns = first(coverage, 'northsouth'), ew = first(coverage, 'eastwest');
+      const west = number(childText(ew, 'start')), south = number(childText(ns, 'start'));
+      const width = number(childText(ew, 'size')), height = number(childText(ns, 'size'));
+      if (width > 0 && height > 0) return bbox(west, south, west + width, south + height);
+    }
+
+    function serviceIndex(root) {
+      const services = new Map();
+      function register(node) {
+        const type = (node.getAttribute('serviceType') || '').toLowerCase();
+        const base = node.getAttribute('base') || '';
+        const leaves = type === 'compound' ? children(node, 'service').flatMap(register)
+          : [{ type, base, suffix: node.getAttribute('suffix') || '' }];
+        services.set(node.getAttribute('name'), leaves);
+        return leaves;
+      }
+      for (const node of descendants(root, 'service')) {
+        if (node.parentElement?.localName !== 'service') register(node);
+      }
+      return services;
+    }
+
+    function serviceLinks(index, entries, url) {
+      const endpoints = new Map();
+      for (const { name, path } of entries) {
+        if (!path) continue;
+        for (const { type, base, suffix } of index.get(name) ?? []) {
+          const address = httpUrl(`${base}${path}${suffix}`, url);
+          if (address && !endpoints.has(type)) endpoints.set(type, address);
+        }
+      }
+      return endpoints;
+    }
+
+    function collectionName(label) {
+      return label.toLowerCase().replace(/\b(?:aggregated|aggregation|dataset|datasets|file|files)\b/g, ' ')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    }
+
+    const isAggregate = label => /\baggregat/i.test(label);
+    const isFileCollection = label => /\bfiles?\b/i.test(label);
+
+    function pairedCollections(entries) {
+      const aggregate = new Set(entries.filter(entry => entry.isDataset && isAggregate(entry.label)).map(entry => collectionName(entry.label)));
+      const files = entries.filter(entry => !entry.isDataset && isFileCollection(entry.label)).map(entry => collectionName(entry.label));
+      return new Set(files.filter(name => name && aggregate.has(name)));
+    }
+
+    function pairAlias(key, label) {
+      return { key, title: label.replace(/\s+(?:aggregated\s+datasets?|files?)\s*$/i, '') };
+    }
+
+    function readXmlCatalog(root, url, alias) {
+      const records = [], refs = [], services = serviceIndex(root);
+      function visit(parent, inherited, trail) {
+        const nodes = Array.from(parent.children);
+        const nameOf = node => node.getAttribute('name') || node.getAttributeNS(XLINK, 'title') || '';
+        // Un aggregato e un catalogRef «files» con lo stesso titolo di prodotto
+        // esprimono un'identità esplicita nel catalogo, anche senza date nei nomi.
+        const pairs = pairedCollections(nodes.filter(node => ['dataset', 'catalogRef'].includes(node.localName))
+          .map(node => ({ label: nameOf(node), isDataset: node.localName === 'dataset' })));
+        for (const node of nodes) {
+          if (!['dataset', 'catalogRef'].includes(node.localName)) continue;
+          const label = nameOf(node), titleKey = collectionName(label);
+          const key = pairs.has(titleKey) ? `${url.href}|${JSON.stringify(trail)}|${titleKey}` : '';
+          if (node.localName === 'catalogRef') {
+            const href = node.getAttributeNS(XLINK, 'href') || node.getAttribute('href');
+            const next = href && httpUrl(href, url);
+            if (next) refs.push({ url: next, alias: key ? pairAlias(key, label) : alias });
+            continue;
+          }
+          const local = {};
+          const pass = { ...inherited };
+          for (const metadata of [node, ...children(node, 'metadata')]) {
+            const values = {
+              service: metadata.getAttribute('serviceName') || childText(metadata, 'serviceName'),
+              feature: metadata.getAttribute('dataType') || metadata.getAttribute('featureType') || childText(metadata, 'featureType') || childText(metadata, 'dataType'),
+              box: catalogBox(metadata),
+            };
+            for (const [name, value] of Object.entries(values)) {
+              if (value) local[name] = value;
+              if (value && metadata.getAttribute('inherited') === 'true') pass[name] = value;
+            }
+          }
+          const meta = { ...inherited, ...local };
+          const access = children(node, 'access');
+          const path = node.getAttribute('urlPath') || access[0]?.getAttribute('urlPath');
+          const id = node.getAttribute('ID') || path;
+          if (path || access.length) {
+            const entries = [{ name: meta.service, path }, ...access.map(entry => ({
+              name: entry.getAttribute('serviceName') || meta.service, path: entry.getAttribute('urlPath') || path,
+            }))];
+            records.push({ id: id || label, path, label: label || id, url, endpoints: serviceLinks(services, entries, url),
+              box: meta.box, feature: meta.feature, alias: key ? pairAlias(key, label) : alias,
+              aggregate: Boolean(key), modified: childText(node, 'date') });
+          }
+          visit(node, pass, [...trail, label]);
+        }
+      }
+      visit(root, {}, []);
+      return { records, refs };
+    }
+
+    function readHtmlCatalog(text, url, alias) {
+      const html = new DOMParser().parseFromString(text, 'text/html');
+      if (!Array.from(html.querySelectorAll('th')).some(th => th.textContent.trim() === 'Dataset') || !/THREDDS Data Server|thredds/i.test(html.body.textContent)) throw new Error('Catalogo THREDDS non riconosciuto');
+      const records = [], refs = [];
+      const entries = [];
+      for (const link of html.querySelectorAll('table td a[href]')) {
+        const label = link.textContent.trim();
+        const target = httpUrl(link.getAttribute('href'), url);
+        if (!target || !label) continue;
+        const id = target.searchParams.get('dataset');
+        entries.push({ label, target, id, isDataset: Boolean(id), modified: link.closest('tr')?.lastElementChild?.textContent.trim() });
+      }
+      const pairs = pairedCollections(entries);
+      for (const { label, target, id, modified } of entries) {
+        const key = collectionName(label);
+        const paired = pairs.has(key);
+        const collection = paired ? pairAlias(`${threddsEndpoint(url).href}|${key}`, label) : alias;
+        if (id) {
+          records.push({ id, path: id.includes('/') ? id : label, label, url: target, endpoints: new Map(), alias: collection, html: true,
+            aggregate: paired && isAggregate(label), modified });
+        } else if (/\.html?$/i.test(target.pathname)) {
+          refs.push({ url: target, alias: collection });
+        }
+      }
+      return { records, refs };
+    }
+
+    async function readCatalog(url, alias) {
+      const xmlUrl = threddsEndpoint(url);
+      try {
+        const root = parseXml(await fetchText(xmlUrl));
+        if (root.localName !== 'catalog' || !/unidata\.ucar\.edu|thredds/i.test(root.namespaceURI || '')) throw new Error('Catalogo THREDDS non riconosciuto');
+        return readXmlCatalog(root, xmlUrl, alias);
+      } catch (xmlError) {
+        const htmlUrl = catalogPage(xmlUrl);
+        try { return readHtmlCatalog(await fetchText(htmlUrl), htmlUrl, alias); }
+        catch { throw xmlError; }
+      }
+    }
+
+    function ymd(year, month, day = '01') {
+      const date = new Date(Date.UTC(+year, +month - 1, +day));
+      if (+year >= 1900 && +year <= 2199 && date.getUTCFullYear() === +year && date.getUTCMonth() + 1 === +month && date.getUTCDate() === +day) return date.toISOString().slice(0, 10);
+    }
+
+    function temporalName(path, directory) {
+      const name = path.split('/').at(-1).replace(GRID_FILE, '');
+      const dates = [
+        /(?<!\d)((?:19|20|21)\d{2})([-_.]?)(\d{2})\2(\d{2})(?:(?:T|[_.-]?)([0-2]\d)(?::?[0-5]\d){0,2}Z?)?(?!\d)/gi,
+        /(?<!\d)((?:19|20|21)\d{2})[-_.]?(\d{2})(?!\d)/g,
+      ];
+      let match, date, run;
+      for (const [index, pattern] of dates.entries()) {
+        for (const candidate of name.matchAll(pattern)) {
+          const day = index === 0 ? ymd(candidate[1], candidate[3], candidate[4]) : ymd(candidate[1], candidate[2]);
+          if (day) { match = candidate; date = day; run = index === 0 ? candidate[5] : ''; break; }
+        }
+        if (match) break;
+      }
+      // Anno a due cifre solo quando una cartella dell'archivio conferma l'anno.
+      if (!match) {
+        const year = directory.match(/(?:^|\/)((?:19|20|21)\d{2})(?=\/|$)/)?.[1];
+        const short = name.match(/(?<!\d)(\d{2})(\d{2})(\d{2})([0-2]\d)(?:\d{2}){0,3}(?!\d)/);
+        if (year && short && year.endsWith(short[1])) {
+          date = ymd(year, short[2], short[3]);
+          if (date) { match = short; run = short[4]; }
+        }
+      }
+      if (!match) return;
+      const before = name.slice(0, match.index).replace(/[_. -]+$/, '');
+      let after = name.slice(match.index + match[0].length).replace(/^[_. -]+/, '');
+      // Un suffisso di scadenza dopo la data/ora di emissione varia nel tempo.
+      if (run && /^(?:fc|lead|step|f)\d{1,3}$/i.test(after)) after = '';
+      return { date, stem: [before, after].filter(Boolean).join('_'), stamp: `${date}T${run || '00'}` };
+    }
+
+    function calendarDirectory(path) {
+      return path.replace(/\/(?:19|20|21)\d{2}[-_]\d{2}(?:[-_]\d{2})?(?=\/|$)/g, '')
+        .replace(/\/(?:19|20|21)\d{2}(?:\/(?:0[1-9]|1[0-2])(?:\/(?:0[1-9]|[12]\d|3[01]))?)?(?=\/|$)/g, '');
+    }
+
+    function collectionOf(record) {
+      const path = (record.path || record.label || '').split('?')[0];
+      const folder = record.url.pathname.replace(/\/[^/]*$/, '');
+      const directory = path.includes('/') ? `/${path.replace(/^\/+/, '').replace(/\/[^/]*$/, '')}` : folder;
+      const time = GRID_FILE.test(path) ? temporalName(path, directory) : undefined;
+      if (record.alias) return { ...record.alias, stamp: time?.stamp };
+      if (!time) return { key: `${record.url.origin}|${record.id}`, title: record.label };
+      const scope = calendarDirectory(directory);
+      const title = time.stem || scope.split('/').filter(Boolean).at(-1) || record.label;
+      return { key: `${record.url.origin}|${scope}|${title}`, title, stamp: time.stamp };
+    }
+
+    function ncssBox(xml) {
+      return unionBoxes(descendants(xml, 'LatLonBox').map(node => bbox(childText(node, 'west'), childText(node, 'south'), childText(node, 'east'), childText(node, 'north'))).filter(Boolean));
+    }
+
+    function wmsBox(xml) {
+      const boxes = [];
+      for (const layer of descendants(xml, 'Layer')) {
+        if (!first(layer, 'Name')) continue;
+        for (let node = layer; node?.localName === 'Layer'; node = node.parentElement) {
+          const ex = first(node, 'EX_GeographicBoundingBox');
+          const legacy = first(node, 'LatLonBoundingBox');
+          const box = ex ? bbox(childText(ex, 'westBoundLongitude'), childText(ex, 'southBoundLatitude'), childText(ex, 'eastBoundLongitude'), childText(ex, 'northBoundLatitude'))
+            : legacy && bbox(legacy.getAttribute('minx'), legacy.getAttribute('miny'), legacy.getAttribute('maxx'), legacy.getAttribute('maxy'));
+          if (box) { boxes.push(box); break; }
+        }
+      }
+      return unionBoxes(boxes);
+    }
+
+    function ncmlBox(xml) {
+      const attributes = node => Object.fromEntries(children(node, 'attribute').map(attr => [attr.getAttribute('name'), attr.getAttribute('value')]));
+      const globals = attributes(xml), axes = Object.create(null);
+      if (/^(?:point|profile|timeseries|trajectory)/i.test(globals.featureType || globals.cdm_data_type || '')) return;
+      for (const variable of children(xml, 'variable')) {
+        const attrs = attributes(variable);
+        const name = (attrs.standard_name || variable.getAttribute('name') || '').toLowerCase();
+        if (/^(?:lon|longitude)$/.test(name) || /degrees_east/i.test(attrs.units || '')) axes.longitude = numericRange(attrs.actual_range);
+        if (/^(?:lat|latitude)$/.test(name) || /degrees_north/i.test(attrs.units || '')) axes.latitude = numericRange(attrs.actual_range);
+      }
+      return globalBox(globals, axes.longitude, axes.latitude);
+    }
+
+    function appendPath(url, suffix) {
+      const copy = new URL(url);
+      copy.pathname = `${copy.pathname.replace(/\/$/, '')}${suffix}`;
+      return copy;
+    }
+
+    function nonGrid(feature) {
+      return /^(?:point|station|profile|timeseries|trajectory|swath|radial)/i.test(feature || '');
+    }
+
+    async function readHtmlDataset(record) {
+      const html = new DOMParser().parseFromString(await fetchText(record.url, { optional: true }), 'text/html');
+      for (const row of html.querySelectorAll('tr')) {
+        const cells = row.querySelectorAll('td');
+        if (cells[0]?.textContent.trim() === 'featureType') record.feature = cells[1]?.textContent.trim();
+        const link = cells[0]?.querySelector('a[href]');
+        if (!link) continue;
+        const url = httpUrl(link.getAttribute('href'), record.url);
+        if (!url) continue;
+        const type = link.textContent.trim().toLowerCase();
+        if (type === 'netcdfsubset' && url.pathname.includes('/grid/')) {
+          url.pathname = url.pathname.replace(/\/dataset\.html$/, '');
+          record.endpoints.set('netcdfsubset', url);
+        }
+        if (['wms', 'ncml', 'opendap'].includes(type)) record.endpoints.set(type, url);
+      }
+    }
+
+    async function recordBox(record) {
+      if (record.box) return record.box;
+      if (record.html) await readHtmlDataset(record);
+      if (nonGrid(record.feature)) return;
+      const links = record.endpoints;
+      const probes = [];
+      const ncss = links.get('netcdfsubset') || links.get('ncss');
+      if (ncss) {
+        const grid = new URL(ncss);
+        if (grid.pathname.includes('/ncss/') && !grid.pathname.includes('/ncss/grid/')) grid.pathname = grid.pathname.replace('/ncss/', '/ncss/grid/');
+        probes.push([appendPath(grid, '/dataset.xml'), ncssBox]);
+        if (grid.pathname !== ncss.pathname) probes.push([appendPath(ncss, '/dataset.xml'), ncssBox]);
+      }
+      if (links.has('wms')) {
+        const url = new URL(links.get('wms'));
+        if (!Array.from(url.searchParams.keys()).some(key => key.toLowerCase() === 'request')) url.searchParams.set('request', 'GetCapabilities');
+        if (!Array.from(url.searchParams.keys()).some(key => key.toLowerCase() === 'service')) url.searchParams.set('service', 'WMS');
+        probes.push([url, wmsBox]);
+      }
+      if (links.has('ncml')) probes.push([links.get('ncml'), ncmlBox]);
+      for (const [url, parse] of probes) {
+        try {
+          const box = parse(parseXml(await fetchText(url, { optional: true })));
+          if (box) return box;
+        } catch { /* Il catalogo può annunciare servizi disabilitati per il singolo file. */ }
+      }
+    }
+
+    async function readThredds(start, source, add) {
+      const root = await readCatalog(start);
+      source.kind = 'THREDDS';
+      const groups = new Map(), visited = new Set([threddsEndpoint(start).href]), entries = new Set();
+      function index(result) {
+        for (const record of result.records) {
+          if (nonGrid(record.feature)) continue;
+          const grid = /^(?:grid|coverage|ugrid|fmrc)/i.test(record.feature || '');
+          const service = [...record.endpoints.keys()].some(type => ['wms', 'netcdfsubset', 'ncss', 'ncml'].includes(type));
+          if (!(grid || record.box || (GRID_FILE.test(record.path || '') && (record.html || service)) || record.aggregate || (!record.feature && (record.html || service)))) continue;
+          if (!grid && /^\./.test(record.label)) continue;
+          const entry = `${record.url.origin}|${record.id}`;
+          if (entries.has(entry)) continue;
+          entries.add(entry);
+          const group = collectionOf(record);
+          if (!groups.has(group.key)) groups.set(group.key, { title: group.title, records: [] });
+          groups.get(group.key).records.push({ ...record, stamp: group.stamp || record.modified || '' });
+        }
+        return result.refs.filter(ref => {
+          const key = threddsEndpoint(ref.url).href;
+          if (visited.has(key)) return false;
+          visited.add(key);
+          return true;
+        });
+      }
+      let level = index(root);
+      while (level.length) {
+        const next = [];
+        await parallel(level, 6, async ref => {
+          try { next.push(...index(await readCatalog(ref.url, ref.alias))); }
+          catch (error) { source.warnings.push(`${ref.url.pathname} · ${describeError(error)}`); }
+        });
+        level = next;
+      }
+      await parallel([...groups.values()], 6, async group => {
+        const records = group.records.sort((a, b) => Number(b.aggregate) - Number(a.aggregate) || b.stamp.localeCompare(a.stamp, undefined, { numeric: true }));
+        const boxes = records.map(record => record.box).filter(Boolean);
+        let representative = records[0];
+        let coverage = boxes.length === records.length ? 'Copertura dichiarata nel catalogo' : 'Copertura da metadati';
+        let aggregateCoverage = representative.aggregate && Boolean(representative.box);
+        if (boxes.length !== records.length && !aggregateCoverage) {
+          const pending = records.filter(record => !record.box && !record.aggregate);
+          // Privilegia l'aggregato. Per i file senza copertura nel catalogo
+          // campiona gli estremi e il centro dell'archivio senza scaricare i dati.
+          const sample = [pending[0], pending.at(-1), pending[Math.floor(pending.length / 2)]];
+          for (const record of new Set([...(representative.aggregate ? [representative] : []), ...sample].filter(Boolean))) {
+            try {
+              const box = await recordBox(record);
+              if (!box) continue;
+              if (!boxes.length) representative = record;
+              boxes.push(box);
+              if (record.aggregate) { aggregateCoverage = true; break; }
+            } catch { /* Si può usare un altro membro della serie. */ }
+          }
+        }
+        if (!boxes.length) {
+          if (!records.every(record => nonGrid(record.feature))) source.missing.push(group.title);
+          return;
+        }
+        if (records.length > 1 && !aggregateCoverage && boxes.length !== records.length) coverage = 'Copertura stimata dai metadati disponibili della serie';
+        const page = representative.html ? representative.url : catalogPage(representative.url, representative.id);
+        add({ id: representative.id, title: group.title, box: unionBoxes(boxes), source, page,
+          catalog: catalogPage(representative.url), files: records.filter(record => !record.aggregate).length || 1, coverage });
+      });
+      return true;
+    }
+
+    function describeError(error) {
+      if (error.name === 'TimeoutError') return 'Tempo di risposta scaduto.';
+      if (error instanceof TypeError) return 'Richiesta al server non riuscita. Verifica la rete e le autorizzazioni CORS.';
+      return error.message;
+    }
+
+    async function discover(source, add) {
+      const { url } = source;
+      const threddsFirst = /\/thredds(?:\/|$)|\/catalog\/|\.xml$/i.test(url.pathname);
+      const tds = () => readThredds(url, source, add);
+      const erddap = () => readErddap(erddapRoot(url), source, add);
+      const probes = threddsFirst ? [tds, erddap] : [erddap, tds];
+      let firstError;
+      for (const read of probes) {
+        try { if (await read()) return; }
+        catch (error) { firstError ??= error; }
+        if (source.kind) break;
+      }
+      throw firstError || new Error('Nessun catalogo ERDDAP o THREDDS riconosciuto.');
+    }
+
+    const datasets = [];
+    const entityDatasets = new Map();
+    let sources = [], viewer, localMap, localExtents, selected, refreshScheduled = false;
+
+    function rectangle(box, pad = 0) {
+      const width = box.east - box.west + (box.east < box.west ? 360 : 0);
+      const margin = Math.max(pad, width * pad * .15);
+      const south = Math.max(-90, box.south - pad), north = Math.min(90, box.north + pad);
+      if (width + 2 * margin >= 360) return Cesium.Rectangle.fromDegrees(-180, south, 180, north);
+      const wrap = lon => ((lon + 180) % 360 + 360) % 360 - 180;
+      return Cesium.Rectangle.fromDegrees(wrap(box.west - margin), south, wrap(box.east + margin), north);
+    }
+
+    async function createLocalMap() {
+      // Chromium does not load Cesium's workers from a file:// document.
+      const leaflet = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/';
+      const stylesheet = document.createElement('link');
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = leaflet + 'leaflet.css';
+      const script = document.createElement('script');
+      script.src = leaflet + 'leaflet.js';
+      await Promise.all([stylesheet, script].map(asset => new Promise((resolve, reject) => {
+        asset.onload = resolve;
+        asset.onerror = reject;
+        document.head.append(asset);
+      })));
+
+      localMap = L.map('globe', { zoomControl: false, maxZoom: BASEMAP_MAX_ZOOM });
+      L.tileLayer(BASEMAP_TILES, {
+        maxZoom: BASEMAP_MAX_ZOOM, attribution: BASEMAP_ATTRIBUTION,
+      }).addTo(localMap);
+      localExtents = L.layerGroup().addTo(localMap);
+      localMap.fitBounds([[28, -20], [56, 44]]);
+    }
+
+    async function createMap() {
+      try {
+        if (location.protocol === 'file:') {
+          await createLocalMap();
+          return;
+        }
+        const imagery = new Cesium.UrlTemplateImageryProvider({
+          url: BASEMAP_TILES,
+          tilingScheme: new Cesium.WebMercatorTilingScheme(),
+          maximumLevel: BASEMAP_MAX_ZOOM,
+          credit: new Cesium.Credit(BASEMAP_ATTRIBUTION, true),
+        });
+        const base = new Cesium.ImageryLayer(imagery);
+        viewer = new Cesium.Viewer('globe', { baseLayer: base, baseLayerPicker: false, sceneMode: Cesium.SceneMode.SCENE2D,
+          geocoder: false, animation: false, timeline: false, fullscreenButton: false, navigationHelpButton: false,
+          sceneModePicker: false, homeButton: false, infoBox: false, selectionIndicator: false, requestRenderMode: true });
+        viewer.camera.setView({ destination: Cesium.Rectangle.fromDegrees(-20, 28, 44, 56) });
+        viewer.screenSpaceEventHandler.setInputAction(event => {
+          const picks = viewer.scene.drillPick(event.position).map(hit => entityDatasets.get(hit.id)).filter(row => row?.entity.show);
+          const unique = [...new Set(picks)];
+          if (unique.length) selectDataset(unique[(unique.indexOf(selected) + 1) % unique.length], false);
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      } catch {
+        $('map-message').textContent = 'Impossibile avviare la mappa. Controlla la connessione e il supporto WebGL.';
+        $('map-message').hidden = false;
+      }
+    }
+
+    function visible(row) {
+      return $(`filter-${row.source.kind.toLowerCase()}`).checked &&
+        `${row.title} ${row.id} ${row.source.url.hostname}`.toLocaleLowerCase().includes($('search').value.trim().toLocaleLowerCase());
+    }
+
+    function fit(rows) {
+      if ((!viewer && !localMap) || !rows.length) return;
+      const box = unionBoxes(rows.map(row => row.box));
+      if (localMap) {
+        const east = box.east < box.west ? box.east + 360 : box.east;
+        localMap.fitBounds([[box.south, box.west], [box.north, east]], { padding: [24, 24], maxZoom: 12 });
+        return;
+      }
+      viewer.camera.flyTo({ destination: rectangle(box, 1), duration: .6 });
+    }
+
+    function extentBorder(box) {
+      const east = box.east < box.west ? box.east + 360 : box.east;
+      // Split wide spans so the border follows the box through the antimeridian.
+      const segments = Math.max(1, Math.ceil((east - box.west) / 45));
+      const longitudes = Array.from({ length: segments + 1 }, (_, index) =>
+        box.west + (east - box.west) * index / segments);
+      const degrees = longitudes.flatMap(lon => [lon, box.south]);
+      degrees.push(...longitudes.reverse().flatMap(lon => [lon, box.north]), box.west, box.south);
+      return Cesium.Cartesian3.fromDegreesArray(degrees);
+    }
+
+    function styleExtent(row) {
+      if (!row) return;
+      const active = row === selected;
+      const color = active ? SELECTED_BORDER : EXTENT_BORDER;
+      const width = active ? 4 : 2;
+      if (row.localExtent) {
+        row.localExtent.setStyle({ color, weight: width });
+        if (active) row.localExtent.bringToFront();
+      }
+      if (row.entity) {
+        row.entity.polyline.material = Cesium.Color.fromCssColorString(color);
+        row.entity.polyline.width = width;
+        row.entity.polyline.zIndex = active ? 1 : 0;
+      }
+    }
+
+    function showExtent(row, show) {
+      if (row.entity) row.entity.show = show;
+      if (row.localExtent) {
+        if (show) localExtents.addLayer(row.localExtent);
+        else localExtents.removeLayer(row.localExtent);
+      }
+    }
+
+    function addDataset(row) {
+      datasets.push(row);
+      row.source.count++;
+      if (localMap) {
+        const { west, south, east, north } = row.box;
+        const edge = east < west ? east + 360 : east;
+        row.localExtent = L.rectangle([[south, west], [north, edge]], { fill: false, opacity: 1 });
+        row.localExtent.on('click', () => selectDataset(row, false));
+      } else if (viewer) {
+        row.entity = viewer.entities.add({ name: row.title, show: visible(row), polyline: {
+          positions: extentBorder(row.box), arcType: Cesium.ArcType.RHUMB, clampToGround: true,
+        } });
+        entityDatasets.set(row.entity, row);
+      }
+      showExtent(row, visible(row));
+      styleExtent(row);
+      scheduleRender();
+    }
+
+    function selectDataset(row, zoom) {
+      const previous = selected;
+      selected = row;
+      styleExtent(previous);
+      styleExtent(row);
+      $('detail').hidden = !row;
+      if (row) {
+        $('detail-title').textContent = row.title;
+        $('detail-source').textContent = [row.source.kind, row.files > 1 ? `${row.files} file` : '', row.coverage].filter(Boolean).join(' · ');
+        const format = value => value.toLocaleString('it', { maximumFractionDigits: 5 });
+        $('detail-bounds').textContent = Object.entries({ O: row.box.west, S: row.box.south, E: row.box.east, N: row.box.north })
+          .map(([side, value]) => `${side} ${format(value)}°`).join(' · ');
+        $('detail-links').replaceChildren();
+        for (const [label, url] of [['Apri dataset', row.page], ['Catalogo e metadati', row.catalog]]) {
+          if (!url) continue;
+          const link = document.createElement('a');
+          link.href = url.href;
+          link.textContent = label;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          $('detail-links').append(link);
+        }
+        if (zoom) fit([row]);
+      }
+      viewer?.scene.requestRender();
+      scheduleRender();
+    }
+
+    function reportSources() {
+      const list = document.createDocumentFragment();
+      for (const source of sources) {
+        const item = document.createElement('li');
+        const label = source.kind ? `${source.kind} · ${source.url.hostname}` : source.url.hostname;
+        const status = source.error || (source.loading ? 'lettura in corso…' : `${source.count} sulla mappa`);
+        item.textContent = `${label} — ${status}`;
+        if (source.missing.length || source.warnings.length) {
+          const details = document.createElement('details'), summary = document.createElement('summary');
+          const stats = [];
+          if (source.missing.length) stats.push(`${source.missing.length} senza copertura leggibile`);
+          if (source.warnings.length) stats.push(`${source.warnings.length} sottocataloghi non letti`);
+          summary.textContent = stats.join(' · ');
+          const problems = document.createElement('ul');
+          for (const problem of [...source.missing, ...source.warnings].sort()) {
+            const entry = document.createElement('li');
+            entry.textContent = problem;
+            problems.append(entry);
+          }
+          details.append(summary, problems);
+          item.append(details);
+        }
+        list.append(item);
+      }
+      const openHosts = Array.from($('source-list').children).map(item => item.querySelector('details')?.open);
+      $('source-list').replaceChildren(list);
+      Array.from($('source-list').children).forEach((item, index) => {
+        const details = item.querySelector('details');
+        if (details && openHosts[index]) details.open = true;
+      });
+    }
+
+    function render() {
+      refreshScheduled = false;
+      const shown = datasets.filter(visible).sort((a, b) => a.title.localeCompare(b.title, 'it', { numeric: true }));
+      if (selected && !visible(selected)) selectDataset(undefined, false);
+      for (const row of datasets) showExtent(row, visible(row));
+      const focused = document.activeElement;
+      const focusedRow = focused?.closest('#datasets button')?.dataset.row;
+      const list = document.createDocumentFragment();
+      shown.forEach(row => {
+        const item = document.createElement('li'), button = document.createElement('button');
+        const title = document.createElement('strong'), meta = document.createElement('span');
+        title.textContent = row.title;
+        meta.className = `meta ${row.source.kind.toLowerCase()}`;
+        meta.textContent = `${row.source.kind} · ${row.source.url.hostname}${row.files > 1 ? ` · ${row.files} file` : ''}`;
+        button.type = 'button';
+        button.dataset.row = `${row.source.url.href}|${row.id}`;
+        button.setAttribute('aria-pressed', String(row === selected));
+        button.addEventListener('click', () => selectDataset(row, true));
+        button.append(title, meta);
+        item.append(button);
+        list.append(item);
+      });
+      $('datasets').replaceChildren(list);
+      if (focusedRow) Array.from($('datasets').querySelectorAll('button')).find(button => button.dataset.row === focusedRow)?.focus({ preventScroll: true });
+      const loading = sources.some(source => source.loading);
+      $('status').textContent = datasets.length ? `${shown.length} di ${datasets.length} dataset${loading ? ' · Lettura in corso…' : ''}`
+        : loading ? 'Lettura dei cataloghi…' : 'Nessuna copertura geografica disponibile.';
+      $('fit').disabled = (!viewer && !localMap) || !shown.length;
+      reportSources();
+      viewer?.scene.requestRender();
+    }
+
+    function scheduleRender() {
+      if (refreshScheduled) return;
+      refreshScheduled = true;
+      requestAnimationFrame(render);
+    }
+
+    async function reload() {
+      $('reload').disabled = true;
+      datasets.length = 0;
+      entityDatasets.clear();
+      viewer?.entities.removeAll();
+      localExtents?.clearLayers();
+      selectDataset(undefined, false);
+      sources = DATA_SERVERS.map(address => ({ url: httpUrl(address), loading: true, count: 0, missing: [], warnings: [] }));
+      scheduleRender();
+      await parallel(sources, 4, async source => {
+        try { await discover(source, addDataset); }
+        catch (error) { source.error = describeError(error); }
+        finally { source.loading = false; scheduleRender(); }
+      });
+      $('reload').disabled = false;
+      if (!selected) fit(datasets.filter(visible));
+    }
+
+    $('reload').disabled = true;
+    $('reload').addEventListener('click', reload);
+    $('fit').addEventListener('click', () => fit(datasets.filter(visible)));
+    $('close-detail').addEventListener('click', () => selectDataset(undefined, false));
+    for (const id of ['search', 'filter-erddap', 'filter-thredds']) $(id).addEventListener('input', scheduleRender);
+    createMap().then(reload);
+  </script>
+</body>
+</html>
