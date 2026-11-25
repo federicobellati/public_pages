@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>ERDDAP Browser SPA</title>
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet.markercluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.1/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.1/dist/MarkerCluster.Default.css"/>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.1/dist/leaflet.markercluster.js"></script>
+
+  <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; background: #f5f5f5; overflow: hidden; }
+      
+      #container { 
+        display: grid; 
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns: 1fr;
+        height: 100vh;
+        width: 100vw;
+      }
+      
+      #top { 
+        background: white; 
+        padding: 8px 12px; 
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .endpoint-box { 
+        display: flex; 
+        gap: 6px;
+        align-items: center;
+      }
+      .endpoint-box input { 
+        padding: 5px; 
+        font-size: 12px;
+        width: 250px;
+      }
+      .endpoint-box button { 
+        padding: 5px 10px; 
+        font-size: 12px;
+      }
+      
+      .dataset-selector { 
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .dataset-selector select { 
+        padding: 5px;
+        font-size: 12px;
+        max-width: 400px;
+      }
+      
+      #endpoints-list { 
+        font-size: 11px; 
+        color: #666;
+        flex-shrink: 0;
+      }
+      #endpoints-list li { 
+        display: inline-block;
+        background: #f0f0f0;
+        padding: 3px 8px;
+        margin: 0 4px;
+        border-radius: 3px;
+      }
+      
+      #map-container { 
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+      .map-type-control {
+        background: white;
+        padding: 2px 4px;
+        border-radius: 4px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        margin-top: 6px;
+      }
+      
+      #map { 
+        width: 100%; 
+        height: 100%; 
+      }
+      
+      #status-section { 
+        background: white; 
+        border-top: 1px solid #ccc;
+        max-height: 150px;
+        overflow: auto;
+        padding: 8px;
+        font-size: 11px;
+      }
+      
+      #status-section summary { 
+        cursor: pointer;
+        font-weight: bold;
+        padding: 4px;
+        background: #f9f9f9;
+        border-left: 3px solid #0077cc;
+      }
+      
+      #status-section pre { 
+        white-space: pre-wrap; 
+        word-wrap: break-word;
+        background: #f0f0f0;
+        padding: 6px;
+        margin-top: 4px;
+        max-height: 120px;
+        overflow: auto;
+        border-radius: 2px;
+      }
+            .popup-mini-plot {
+                width: 260px;
+                height: 120px;
+                background-color: #fff;
+                background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 24px), repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 24px);
+                border: 1px solid #eee;
+                margin-bottom: 8px;
+            }
+            .popup-date-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+            .popup-date-row label { font-size:11px; color:#333; }
+            .popup-date-row input[type="date"]{ font-size:12px; padding:4px; }
+              /* pixel-aligned marker icon used instead of SVG circleMarker to avoid spiderfy misplacement */
+              .erddap-point-icon { display:block; }
+              .erddap-point-icon > div { width:10px; height:10px; border-radius:50%; background:#ff0000; box-shadow:0 0 0 0 rgba(0,0,0,0.08); }
+  </style>
+</head>
+
+<body x-data="erddapApp()">
+
+  <div id="container">
+    <!-- TOP BAR -->
+    <div id="top">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px">
+            <strong>ERDDAP Endpoints:</strong>
+            <div style="display:flex; gap:4px; flex-wrap:wrap">
+              <template x-for="ep in defaultEndpoints" :key="ep">
+                <label style="display:flex; gap:4px; align-items:center; background:#f0f0f0; padding:4px 8px; border-radius:3px; font-size:11px">
+                  <input type="checkbox" x-model="ep.active" @change="toggleEndpoint(ep)" style="margin:0; cursor:pointer;">
+                  <span style="cursor:pointer; white-space:nowrap" @click="ep.active = !ep.active" x-text="ep.name"></span>
+                </label>
+              </template>
+            </div>
+          </label>
+        </div>
+        
+        <div class="endpoint-box">
+          <input x-model="newEndpoint" placeholder="https://erddap..." title="Aggiungi nuovo endpoint">
+          <button @click="addEndpoint()" title="Aggiungi endpoint">+</button>
+        </div>
+      </div>
+      
+      <div class="dataset-selector">
+        <label>Dataset:</label>
+        <select @change="selectDatasetByOption($event)" title="Seleziona e visualizza dataset">
+          <option value="">-- Scegli dataset --</option>
+          <template x-for="d in filteredDatasets()" :key="d.endpoint + '|' + d.datasetID">
+            <option :value="JSON.stringify(d)" x-text="d.title"></option>
+          </template>
+        </select>
+      </div>
+      <!-- search and filter directly after dataset selector -->
+      <div style="display:flex; gap:6px; align-items:center; font-size:11px; color:#666">
+        <input x-model="search" placeholder="Ricerca..." style="padding:4px; font-size:11px; width:120px">
+        <select x-model="filterType" style="padding:4px; font-size:11px">
+          <option value="">Tutti</option>
+          <option value="tabledap">tabledap</option>
+          <option value="griddap">griddap</option>
+        </select>
+        <label style="display:flex; gap:4px; align-items:center; white-space:nowrap;">
+          <input type="checkbox" x-model="drawAreas" style="margin:0; cursor:pointer;">
+          <span style="cursor:pointer;">Disegna aree</span>
+        </label>
+                <label style="display:flex; gap:4px; align-items:center; white-space:nowrap;">
+                    <input type="checkbox" x-model="spiderfy" style="margin:0; cursor:pointer;">
+                    <span style="cursor:pointer;">Spiderfy</span>
+                </label>
+      </div>
+
+      <!-- Login button - aligned to the right -->
+      <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+        <button @click="openLoginModal()" style="padding:6px 12px; font-size:12px; cursor:pointer; background:#0077cc; color:white; border:none; border-radius:4px;">
+          Login
+        </button>
+      </div>
+    </div>
+
+    <!-- MAPPA -->
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+
+    <!-- STATUS (COLLAPSIBLE) -->
+    <details id="status-section">
+      <summary>🔧 Debug Info</summary>
+      <div style="padding:6px">
+        <div>Endpoint attivi: <span x-text="endpoints.length"></span> | Dataset caricati: <span x-text="datasets.length"></span></div>
+        <div style="color:#d00; margin-top:4px"><span x-text="lastMessage"></span></div>
+        <pre x-text="lastResponseSnippet"></pre>
+      </div>
+    </details>
+  </div>
+
+  <script>
+  function erddapApp() {
+      const app = {
+          newEndpoint: "",
+          endpoints: [],
+          defaultEndpoints: [
+              { url: "https://seas-erddap.ve.ismar.cnr.it/erddap", name: "ISMAR Seas", active: false },
+              { url: "https://erddap-itineris.ve.ismar.cnr.it/erddap", name: "ISMAR Itineris", active: false },
+              { url: "https://nodc.ogs.it/erddap", name: "OGS NODC", active: false },
+              { url: "https://erddap.emodnet-physics.eu/erddap", name: "EMODnet Physics", active: false }
+          ],
+          datasets: [],
+          search: "",
+          filterType: "",
+          drawAreas: true,
+          spiderfy: true,
+          map: null,
+          mapLayer: null,
+          markerClusterGroup: null,
+          areaLayerGroup: null,
+          plotRenderTimers: {},
+          plotControllers: {},
+          mapLayers: {},  // object to store all dataset layers
+          lastMessage: '',
+          lastResponseSnippet: '',
+          isLoggedIn: false,
+          user: null,
+
+          init() {
+              // inizializza la mappa senza zoomControl default
+              this.map = L.map('map', {zoomControl: false});
+              // set default European view (Germany to Libya/Egypt) with Adriatic centered
+              const defaultBounds = [[30, -10], [55, 36]]; // [southWest, northEast]
+              this.map.fitBounds(defaultBounds, {padding:[50,50]});
+              // add a bit more zoom after fitting
+              this.map.setZoom(this.map.getZoom() + 1);
+              // Add zoom control in bottom-right
+              L.control.zoom({position: 'bottomright'}).addTo(this.map);
+              
+              // Add reset button control in top-right (above map type control)
+              const self = this;
+              const resetControl = L.control({position: 'topright'});
+              resetControl.onAdd = function(map) {
+                  const div = L.DomUtil.create('div');
+                  div.id = 'reset-control-container';
+                  div.style.cssText = 'background-color: white; padding: 4px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.3);';
+                  
+                  const btn = L.DomUtil.create('button', '', div);
+                  btn.innerHTML = '⟲';
+                  btn.style.cssText = 'padding:6px 10px;font-size:18px;cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;width:100%;';
+                  btn.title = 'Reset mappa';
+                  
+                  L.DomEvent.disableClickPropagation(div);
+                  btn.addEventListener('click', function(e) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const bounds = [[30, -10], [55, 36]];
+                      self.map.fitBounds(bounds, {padding:[50,50]});
+                  });
+                  return div;
+              };
+              resetControl.addTo(this.map);
+              // Allow free panning - no bounds constraints
+
+              // default layers
+              const baseLayers = {
+                  "OpenStreetMap": L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18}),
+                  // Esri World Imagery provides satellite tiles
+                  "Esri World Imagery": L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:18, attribution: 'Tiles © Esri'})
+              };
+              // add default map type (Esri World Imagery)
+              baseLayers["Esri World Imagery"].addTo(this.map);
+
+              // add map type selector button control
+              const mapTypeControl = L.control({position: 'topright'});
+              mapTypeControl.onAdd = function(map) {
+                  const div = L.DomUtil.create('div');
+                  div.style.cssText = 'background-color: white; padding: 4px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); margin-top: 4px;';
+                  
+                  const btn = L.DomUtil.create('button', '', div);
+                  btn.innerHTML = '◰';
+                  btn.id = 'mapTypeBtn';
+                  btn.style.cssText = 'padding:6px 10px;font-size:18px;cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;width:100%;';
+                  btn.title = 'Seleziona mappa';
+                  
+                  const menu = L.DomUtil.create('div', '', div);
+                  menu.id = 'mapTypeMenu';
+                  menu.style.cssText = 'display:none;position:absolute;top:40px;right:0;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;min-width:150px;';
+                  
+                  const layerNames = ['Esri World Imagery', 'OpenStreetMap'];
+                  layerNames.forEach(layerName => {
+                      const option = L.DomUtil.create('div', '', menu);
+                      option.style.cssText = 'padding:8px 12px;cursor:pointer;white-space:nowrap;';
+                      option.textContent = layerName;
+                      option.dataset.layer = layerName;
+                      option.addEventListener('mouseenter', function() {
+                          this.style.backgroundColor = '#f0f0f0';
+                      });
+                      option.addEventListener('mouseleave', function() {
+                          this.style.backgroundColor = 'transparent';
+                      });
+                      option.addEventListener('click', function(e) {
+                          e.stopPropagation();
+                          Object.values(baseLayers).forEach(l => self.map.removeLayer(l));
+                          baseLayers[layerName].addTo(self.map);
+                          menu.style.display = 'none';
+                      });
+                  });
+                  
+                  L.DomEvent.disableClickPropagation(div);
+                  btn.addEventListener('click', function(e) {
+                      e.stopPropagation();
+                      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                  });
+                  
+                  return div;
+              };
+              mapTypeControl.addTo(this.map);
+              
+              // Initialize marker cluster group and area layer group
+              this.areaLayerGroup = L.layerGroup();
+              this.map.addLayer(this.areaLayerGroup);
+
+              // helper to (re)create the marker cluster group according to `spiderfy`
+              this.updateMarkerClusterGroup = function() {
+                  try { if (this.markerClusterGroup) this.map.removeLayer(this.markerClusterGroup); } catch(e) {}
+                  const opts = { maxClusterRadius: 80, spiderfyOnMaxZoom: !!this.spiderfy, spiderfyDistanceMultiplier: 1 };
+                  this.markerClusterGroup = L.markerClusterGroup(opts);
+                  this.map.addLayer(this.markerClusterGroup);
+                  // reattach existing layers to the appropriate groups
+                  Object.keys(this.mapLayers || {}).forEach(k => {
+                      const layer = this.mapLayers[k];
+                      if (!layer) return;
+                      if (typeof layer.getLatLng === 'function') {
+                          try { this.markerClusterGroup.addLayer(layer); } catch(e) {}
+                      } else {
+                          try { this.areaLayerGroup.addLayer(layer); } catch(e) {}
+                      }
+                  });
+              };
+              this.updateMarkerClusterGroup();
+              
+              // Watch for drawAreas changes and redraw
+              this.$watch('drawAreas', () => {
+                  this.redrawAllMarkers();
+              });
+
+              // Watch for spiderfy toggle and recreate cluster group
+              this.$watch('spiderfy', () => {
+                  this.updateMarkerClusterGroup();
+              });
+              
+              // Redraw markers on zoom to ensure correct positioning (debounced)
+              if (!this._redrawTimer) this._redrawTimer = null;
+              this.map.on('zoomend', () => {
+                  if (this._redrawTimer) clearTimeout(this._redrawTimer);
+                  this._redrawTimer = setTimeout(() => { self.redrawAllMarkers(); }, 200);
+              });
+              
+              this.map.on('moveend', () => {
+                  this.map.invalidateSize(false);
+              });
+          },
+
+          addEndpoint() {
+              const ep = this.newEndpoint.trim();
+              if (!ep) return;
+              this.endpoints.push(ep);
+              this.newEndpoint = "";
+              this.loadFromEndpoint(ep);
+          },
+
+          toggleEndpoint(epObj) {
+              if (epObj.active) {
+                  // Activate: load datasets from this endpoint
+                  if (!this.endpoints.includes(epObj.url)) {
+                      this.endpoints.push(epObj.url);
+                  }
+                  this.loadFromEndpoint(epObj.url);
+              } else {
+                  // Deactivate: remove all datasets from this endpoint
+                  this.removeDatasetsByEndpoint(epObj.url);
+                  const idx = this.endpoints.indexOf(epObj.url);
+                  if (idx >= 0) {
+                      this.endpoints.splice(idx, 1);
+                  }
+              }
+          },
+
+          openLoginModal() {
+              // Placeholder for login functionality
+              // TODO: Implement authentication modal
+              console.log('Login modal should open here');
+              alert('Login functionality coming soon');
+          },
+
+          removeDatasetsByEndpoint(endpoint) {
+              // Remove all datasets and markers associated with this endpoint
+              const datasetsToRemove = this.datasets.filter(d => d.endpoint === endpoint);
+              datasetsToRemove.forEach(d => {
+                  const layerKey = d.endpoint + '|' + d.datasetID;
+                  const layer = this.mapLayers[layerKey];
+                  if (layer) {
+                      this.markerClusterGroup.removeLayer(layer);
+                      if (this.areaLayerGroup) this.areaLayerGroup.removeLayer(layer);
+                      delete this.mapLayers[layerKey];
+                  }
+              });
+              // Remove datasets from list
+              this.datasets = this.datasets.filter(d => d.endpoint !== endpoint);
+          },
+
+          async loadFromEndpoint(endpoint) {
+              try {
+                  const url = `${endpoint}/info/index.json`;
+                  const resp = await fetch(url);
+                  if (!resp.ok) throw new Error(`Errore HTTP ${resp.status}`);
+
+                                    const data = await resp.json();
+                                    const cols = (data && data.table && data.table.columnNames) || [];
+                                    const rows = (data && data.table && data.table.rows) || [];
+
+                                    // normalize column names to ease matching (lowercase, remove spaces and non-word)
+                                    const norm = cols.map(c => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+                                    // update status preview: show columns and first rows
+                                    try {
+                                        this.lastResponseSnippet = JSON.stringify({columns: cols, sample: rows.slice(0,4)}, null, 2);
+                                    } catch(e) {
+                                        this.lastResponseSnippet = String(cols).slice(0,500);
+                                    }
+
+                                    if (rows.length === 0) {
+                                        this.lastMessage = `Nessuna riga trovata in ${endpoint}`;
+                                    } else {
+                                        this.lastMessage = `Caricate ${rows.length} righe da ${endpoint} (cols: ${cols.length})`;
+                                    }
+
+                                    // helper to find index by alternatives
+                                    const findIdx = (alts) => {
+                                        for (const a of alts) {
+                                            const i = norm.indexOf(a.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                                            if (i >= 0) return i;
+                                        }
+                                        return -1;
+                                    };
+
+                                    // determine indices (case/spacing agnostic)
+                                    const idx = {
+                                        datasetID: findIdx(['datasetID','datasetid','dataset_id','dataset id','datasetid']),
+                                        title: findIdx(['title','datasettitle','dataset_title']),
+                                        tabledap: findIdx(['tabledap']),
+                                        griddap: findIdx(['griddap']),
+                                        subset: findIdx(['subset','subseturl']),
+                                        minLongitude: findIdx(['minlongitude','minlon','geospatiallonmin','geospatial_lon_min','min_longitude']),
+                                        maxLongitude: findIdx(['maxlongitude','maxlon','geospatiallonmax','geospatial_lon_max','max_longitude']),
+                                        minLatitude: findIdx(['minlatitude','minlat','geospatiallatmin','geospatial_lat_min','min_latitude']),
+                                        maxLatitude: findIdx(['maxlatitude','maxlat','geospatiallatmax','geospatial_lat_max','max_latitude'])
+                                    };
+
+                                    // expose which indices were found for debugging
+                                    this.lastMessage += `; mapped cols datasetID=${idx.datasetID}, title=${idx.title}, tabledap=${idx.tabledap}, griddap=${idx.griddap}`;
+
+                                    rows.forEach(r => {
+                                              // get datasetID robustly
+                                              let id = null;
+                                              if (idx.datasetID >= 0) id = r[idx.datasetID];
+                                              // fallback: last column often contains datasetID
+                                              if (!id) id = r[r.length - 1];
+                                              if (!id) return; // skip invalid
+                                              id = String(id);
+                                              
+                                              // Skip special ERDDAP dataset
+                                              if (id === 'allDatasets') return;
+
+                                            // evita duplicati per lo stesso endpoint
+                                            const exists = this.datasets.some(ds => ds.datasetID === id && ds.endpoint === endpoint);
+                                            if (exists) return;
+
+                                              // title
+                                              let title = (idx.title >= 0) ? r[idx.title] : (r[6] || '(no title)');
+                                            title = title || '(no title)';
+
+                                            // type: try common names
+                                            const typeCandidates = ['cdm_data_type','class','dataStructure'];
+                                            let type = '';
+                                            for (const tName of typeCandidates) {
+                                                const p = cols.indexOf(tName);
+                                                if (p >= 0 && r[p]) { type = r[p]; break; }
+                                            }
+
+                                            // link: prefer explicit url columns if present
+                                            let link = null;
+                                            if (idx.tabledap >= 0 && r[idx.tabledap]) link = String(r[idx.tabledap]);
+                                            else if (idx.subset >= 0 && r[idx.subset]) link = String(r[idx.subset]);
+                                            else if (cols.indexOf('infoUrl') >= 0) {
+                                                const i = cols.indexOf('infoUrl'); if (r[i]) link = String(r[i]);
+                                            }
+                                            if (link && link.endsWith('.json')) link = link.replace(/index\.json$/, 'index.html');
+                                            if (!link) link = `${endpoint}/info/${encodeURIComponent(id)}/index.html`;
+
+                                            // type: prefer presence of tabledap/griddap URLs
+                                            let finalType = '';
+                                            if (idx.tabledap >= 0 && r[idx.tabledap]) finalType = 'tabledap';
+                                            else if (idx.griddap >= 0 && r[idx.griddap]) finalType = 'griddap';
+                                            else {
+                                                // fallback to cdm_data_type or class columns if available
+                                                const cdmi = findIdx(['cdm_data_type','cdmdatatype']);
+                                                const classi = findIdx(['class']);
+                                                if (cdmi >= 0 && r[cdmi]) finalType = String(r[cdmi]);
+                                                else if (classi >= 0 && r[classi]) finalType = String(r[classi]);
+                                            }
+
+                                            // bounding box: try to read min/max lon/lat from allDatasets table
+                                            let bboxObj = null;
+                                            const gotLonMin = (idx.minLongitude >= 0 && r[idx.minLongitude] !== "");
+                                            const gotLonMax = (idx.maxLongitude >= 0 && r[idx.maxLongitude] !== "");
+                                            const gotLatMin = (idx.minLatitude >= 0 && r[idx.minLatitude] !== "");
+                                            const gotLatMax = (idx.maxLatitude >= 0 && r[idx.maxLatitude] !== "");
+                                            if (gotLonMin || gotLonMax || gotLatMin || gotLatMax) {
+                                                const minLonVal = gotLonMin ? Number(r[idx.minLongitude]) : NaN;
+                                                const maxLonVal = gotLonMax ? Number(r[idx.maxLongitude]) : NaN;
+                                                const minLatVal = gotLatMin ? Number(r[idx.minLatitude]) : NaN;
+                                                const maxLatVal = gotLatMax ? Number(r[idx.maxLatitude]) : NaN;
+                                                if ([minLonVal,maxLonVal,minLatVal,maxLatVal].every(v => isFinite(v))) {
+                                                    bboxObj = {minLon: minLonVal, maxLon: maxLonVal, minLat: minLatVal, maxLat: maxLatVal};
+                                                }
+                                            }
+
+                                              this.datasets.push({
+                                                  datasetID: id,
+                                                  type: finalType || '',
+                                                  title: title,
+                                                  endpoint: endpoint,
+                                                  link: link,
+                                                  bbox: bboxObj
+                                              });
+                                              
+                                              // create and add marker to map immediately if bbox is available
+                                              // otherwise fetch metadata in background
+                                              if (bboxObj) {
+                                                  this.addDatasetMarker({
+                                                      datasetID: id,
+                                                      type: finalType || '',
+                                                      title: title,
+                                                      endpoint: endpoint,
+                                                      link: link,
+                                                      bbox: bboxObj
+                                                  });
+                                              } else {
+                                                  // Load bbox from metadata in background
+                                                  this.loadDatasetMetadata({
+                                                      datasetID: id,
+                                                      type: finalType || '',
+                                                      title: title,
+                                                      endpoint: endpoint,
+                                                      link: link
+                                                  });
+                                              }
+                                    });
+                            } catch (err) {
+                                    console.error('loadFromEndpoint error', err);
+                                    this.lastMessage = 'Errore: ' + (err && err.message ? err.message : String(err));
+                                    alert("Errore nel caricare: " + endpoint + "\n" + err);
+                            }
+          },
+
+          filteredDatasets() {
+              const searchLower = (this.search || '').toLowerCase();
+              return this.datasets.filter(d => {
+                  const title = (d.title || '').toLowerCase();
+                  const id = (d.datasetID || '').toLowerCase();
+                  const matchText = title.includes(searchLower) || id.includes(searchLower);
+                  
+                  // Normalize type comparison (case-insensitive and trim whitespace)
+                  const dType = (d.type || '').toLowerCase().trim();
+                  const filterTypeNorm = (this.filterType || '').toLowerCase().trim();
+                  const matchType = filterTypeNorm ? dType === filterTypeNorm : true;
+                  
+                  return matchText && matchType;
+              });
+          },
+
+          selectDatasetByOption(event) {
+              const val = event.target.value;
+              if (!val) return;
+              try {
+                const d = JSON.parse(val);
+                this.focusDataset(d);
+                event.target.value = '';
+              } catch(e) {
+                console.error('selectDatasetByOption parse error', e);
+              }
+          },
+
+          addDatasetMarker(d) {
+              // Create a unique key for this dataset
+              const layerKey = d.endpoint + '|' + d.datasetID;
+              
+              // Skip if already added
+              if (this.mapLayers[layerKey]) return;
+              
+              if (!d.bbox) return; // no bbox data, skip
+              
+              const {minLon, maxLon, minLat, maxLat} = d.bbox;
+              if (![minLon, maxLon, minLat, maxLat].every(v => isFinite(v))) return;
+              
+              let aMinLon = Number(minLon), aMaxLon = Number(maxLon), aMinLat = Number(minLat), aMaxLat = Number(maxLat);
+              if (aMinLon > aMaxLon) { const t = aMinLon; aMinLon = aMaxLon; aMaxLon = t; }
+              if (aMinLat > aMaxLat) { const t = aMinLat; aMinLat = aMaxLat; aMaxLat = t; }
+              
+              const latDiff = Math.abs(aMaxLat - aMinLat);
+              const lonDiff = Math.abs(aMaxLon - aMinLon);
+              
+              try {
+                  const centerLat = (aMinLat + aMaxLat) / 2;
+                  const centerLon = (aMinLon + aMaxLon) / 2;
+                  
+                  // Always create a point marker or center marker
+                      if (latDiff < 1e-6 || lonDiff < 1e-6 || !this.drawAreas) {
+                      // Single point marker rendered as a pixel-aligned divIcon marker
+                      const iconHtml = '<div style="width:10px;height:10px;border-radius:50%;background:#ff0000;box-shadow:0 0 0 0 rgba(0,0,0,0.08);"></div>';
+                      const divIcon = L.divIcon({ className: 'erddap-point-icon', html: iconHtml, iconSize: [10,10], iconAnchor: [5,5] });
+                      const marker = L.marker([centerLat, centerLon], { icon: divIcon });
+                      marker.bindPopup(this.buildPopupHtml(d));
+                      this.markerClusterGroup.addLayer(marker);
+                      this.mapLayers[layerKey] = marker;
+                      // ensure plot renders when popup opens
+                      marker.on('popupopen', () => { this.renderPopupPlot(d); });
+                      // asynchronously load variables if not already present and update popup
+                      if (!d.variables) {
+                          this.loadDatasetVariables(d).then(vars => {
+                              const m = this.mapLayers[layerKey];
+                              if (m && m.getPopup) {
+                                  m.setPopupContent(this.buildPopupHtml(d));
+                                  setTimeout(()=>{ this.renderPopupPlot(d); }, 60);
+                              }
+                          });
+                      }
+                  } else if (this.drawAreas) {
+                      // Rectangle for bbox (only if drawAreas is enabled)
+                      const bounds = [[aMinLat, aMinLon], [aMaxLat, aMaxLon]];
+                      const rect = L.rectangle(bounds, {color: '#ffcc00', weight: 2, fillOpacity: 0});
+                      rect.bindPopup(this.buildPopupHtml(d));
+                      // ensure popup opens when clicked (layerGroup doesn't provide clustering behavior)
+                      rect.on('click', function() { rect.openPopup(); });
+                      if (this.areaLayerGroup) this.areaLayerGroup.addLayer(rect);
+                      this.mapLayers[layerKey] = rect;
+                      rect.on('popupopen', () => { this.renderPopupPlot(d); });
+                      if (!d.variables) {
+                          this.loadDatasetVariables(d).then(vars => {
+                              const r = this.mapLayers[layerKey];
+                              if (r && r.getPopup) {
+                                  r.setPopupContent(this.buildPopupHtml(d));
+                                  setTimeout(()=>{ this.renderPopupPlot(d); }, 60);
+                              }
+                          });
+                      }
+                  }
+              } catch(e) {
+                  console.warn('addDatasetMarker failed:', e);
+              }
+          },
+
+          async loadDatasetMetadata(d) {
+              // Load metadata to get bbox for datasets that don't have it yet (and gather variables)
+              try {
+                  const metaUrl = `${d.endpoint}/info/${d.datasetID}/index.json`;
+                  const resp = await fetch(metaUrl);
+                  if (!resp.ok) return;
+                  
+                  const data = await resp.json();
+                  let minLon=null, maxLon=null, minLat=null, maxLat=null;
+                  const metaCols = (data && data.table && data.table.columnNames) || [];
+                  const metaRows = (data && data.table && data.table.rows) || [];
+                  
+                  // try to extract variable list from metadata rows
+                  const lowerCols = metaCols.map(c => String(c||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+                  const varIdx = lowerCols.findIndex(c => c.includes('variablename') || c==='variable');
+                  if (varIdx >= 0) {
+                      const vars = new Set();
+                      metaRows.forEach(r => {
+                          const v = r[varIdx];
+                          if (v && String(v).trim()) vars.add(String(v).trim());
+                      });
+                      const dataset = this.datasets.find(ds => ds.datasetID === d.datasetID && ds.endpoint === d.endpoint);
+                      if (dataset) dataset.variables = Array.from(vars).filter(v => {
+                          const vl = v.toLowerCase();
+                          return !['latitude','longitude','time','qualitycontrol','nc_global'].includes(vl);
+                      });
+                  }
+                  
+                  const metaNorm = metaCols.map(c => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+                  const attrIdx = (() => {
+                      const candidates = ['attributename','name','attribute_name','attribute'];
+                      for (const c of candidates) {
+                          const i = metaNorm.indexOf(c);
+                          if (i >= 0) return i;
+                      }
+                      return 1;
+                  })();
+                  const valueIdx = (() => {
+                      const candidates = ['value','attributevalue','attrvalue','v'];
+                      for (const c of candidates) {
+                          const i = metaNorm.indexOf(c);
+                          if (i >= 0) return i;
+                      }
+                      return 4;
+                  })();
+                  
+                  let thisTimeStart = null;
+                  let thisTimeEnd = null;
+                  metaRows.forEach((r) => {
+                      const attr = r && r[attrIdx] ? String(r[attrIdx]) : '';
+                      const val = r && r[valueIdx] ? String(r[valueIdx]) : '';
+                      if (!attr) return;
+                      const an = attr.toLowerCase();
+                      if (an.includes('geospatial_lon_min') || (an.includes('lon') && an.includes('min'))) { minLon = parseFloat(val); }
+                      if (an.includes('geospatial_lon_max') || (an.includes('lon') && an.includes('max'))) { maxLon = parseFloat(val); }
+                      if (an.includes('geospatial_lat_min') || (an.includes('lat') && an.includes('min'))) { minLat = parseFloat(val); }
+                      if (an.includes('geospatial_lat_max') || (an.includes('lat') && an.includes('max'))) { maxLat = parseFloat(val); }
+                      // time coverage attributes
+                      if (an.includes('time_coverage_start') || an.includes('timecoverage_start') || an.includes('time_start') || an.includes('start_time') || an==='time_start' || an.includes('startdate')) {
+                          try { const dt = new Date(val); if (isFinite(dt)) { if (!thisTimeStart) thisTimeStart = dt; } } catch(e){}
+                      }
+                      if (an.includes('time_coverage_end') || an.includes('timecoverage_end') || an.includes('time_end') || an.includes('end_time') || an==='time_end' || an.includes('enddate')) {
+                          try { const dt = new Date(val); if (isFinite(dt)) { if (!thisTimeEnd) thisTimeEnd = dt; } } catch(e){}
+                      }
+                  });
+                  
+                  minLon = Number(minLon); maxLon = Number(maxLon);
+                  minLat = Number(minLat); maxLat = Number(maxLat);
+                  // attach parsed time coverage to dataset object if found
+                  if (thisTimeStart || thisTimeEnd) {
+                      const dataset = this.datasets.find(ds => ds.datasetID === d.datasetID && ds.endpoint === d.endpoint);
+                      if (dataset) dataset.timeCoverage = { start: thisTimeStart, end: thisTimeEnd };
+                  }
+                  
+                  const allFinite = [minLon, maxLon, minLat, maxLat].every(v => isFinite(v));
+                  if (allFinite) {
+                      // Update the dataset with bbox
+                      const dataset = this.datasets.find(ds => ds.datasetID === d.datasetID && ds.endpoint === d.endpoint);
+                      if (dataset) {
+                          dataset.bbox = {minLon, maxLon, minLat, maxLat};
+                          // Now add the marker
+                          this.addDatasetMarker(dataset);
+                      }
+                  }
+              } catch(e) {
+                  console.warn('loadDatasetMetadata failed:', e);
+              }
+          },
+
+          focusDataset(d) {
+              // Only zoom to the dataset, don't remove other markers
+              if (!d.bbox) {
+                  console.warn('focusDataset: no bbox');
+                  return;
+              }
+              
+              const {minLon, maxLon, minLat, maxLat} = d.bbox;
+              if (![minLon, maxLon, minLat, maxLat].every(v => isFinite(v))) {
+                  console.warn('focusDataset: invalid bounds');
+                  return;
+              }
+              
+              let aMinLon = Number(minLon), aMaxLon = Number(maxLon), aMinLat = Number(minLat), aMaxLat = Number(maxLat);
+              if (aMinLon > aMaxLon) { const t = aMinLon; aMinLon = aMaxLon; aMaxLon = t; }
+              if (aMinLat > aMaxLat) { const t = aMinLat; aMinLat = aMaxLat; aMaxLat = t; }
+              
+              const latDiff = Math.abs(aMaxLat - aMinLat);
+              const lonDiff = Math.abs(aMaxLon - aMinLon);
+              
+              this.map.invalidateSize(false);
+              
+              const layerKey = d.endpoint + '|' + d.datasetID;
+              
+              // Set up listener to open popup after zoom completes
+              const self = this;
+              this.map.once('zoomend', function openPopupAfterZoom() {
+                  // Search for the current layer in mapLayers (it may have been redrawn)
+                  const currentLayer = self.mapLayers[layerKey];
+                  if (currentLayer && currentLayer.openPopup) {
+                      setTimeout(() => {
+                          currentLayer.openPopup();
+                      }, 50);
+                  }
+              });
+              
+              if (latDiff < 1e-6 || lonDiff < 1e-6) {
+                  const centerLat = (aMinLat + aMaxLat) / 2;
+                  const centerLon = (aMinLon + aMaxLon) / 2;
+                  this.map.setView([centerLat, centerLon], 8);
+              } else {
+                  const bounds = [[aMinLat, aMinLon], [aMaxLat, aMaxLon]];
+                  this.map.fitBounds(bounds, {padding: [50, 50]});
+              }
+          },
+
+          async selectDataset(d) {
+              // Legacy method - just focus on the dataset
+              this.focusDataset(d);
+          },
+
+          async loadDatasetVariables(d) {
+              // fetch metadata and extract variable names (excluding independents)
+              try {
+                  const metaUrl = `${d.endpoint}/info/${d.datasetID}/index.json`;
+                  const resp = await fetch(metaUrl);
+                  if (!resp.ok) return [];
+                  const data = await resp.json();
+                  const cols = (data && data.table && data.table.columnNames) || [];
+                  const rows = (data && data.table && data.table.rows) || [];
+                  const lowerCols = cols.map(c => String(c||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+                  const varIdx = lowerCols.findIndex(c => c.includes('variablename') || c==='variable');
+                  const vars = new Set();
+                  if (varIdx >= 0) {
+                      rows.forEach(r => {
+                          const v = r[varIdx];
+                          if (v && String(v).trim()) vars.add(String(v).trim());
+                      });
+                  }
+                  const array = Array.from(vars).filter(v => {
+                      const vl = v.toLowerCase();
+                      return !['latitude','longitude','time','qualitycontrol','nc_global'].includes(vl);
+                  });
+                  // store back into dataset object for reuse
+                  d.variables = array;
+                  return array;
+              } catch(e) {
+                  console.warn('loadDatasetVariables failed', e);
+                  return [];
+              }
+          },
+
+          // Try to extract time coverage (start/end) from dataset metadata index.json
+          async getDatasetTimeCoverage(d) {
+              // prefer cached coverage if available
+              if (d && d.timeCoverage) {
+                  const s = d.timeCoverage.start ? new Date(d.timeCoverage.start) : null;
+                  const e = d.timeCoverage.end ? new Date(d.timeCoverage.end) : null;
+                  return { start: s, end: e };
+              }
+              try {
+                  const metaUrl = `${d.endpoint}/info/${d.datasetID}/index.json`;
+                  const resp = await fetch(metaUrl);
+                  if (!resp.ok) return null;
+                  const data = await resp.json();
+                  const cols = (data && data.table && data.table.columnNames) || [];
+                  const rows = (data && data.table && data.table.rows) || [];
+                  const lowerCols = cols.map(c => String(c||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+                  // look for attributes like time_coverage_start / time_coverage_end or start/end
+                  let start=null, end=null;
+                  rows.forEach(r => {
+                      for (let i=0;i<cols.length;i++){
+                          const key = String(cols[i]||'').toLowerCase();
+                          const val = r[i];
+                          if (!val) continue;
+                          const k = key.replace(/[^a-z0-9_]/g,'');
+                          const v = String(val);
+                          if (!start && (k.includes('time_coverage_start') || k.includes('timecoverage_start') || k.includes('startdate') || k.includes('start_time') || k.includes('time_start') || k==='start')) {
+                              start = v;
+                          }
+                          if (!end && (k.includes('time_coverage_end') || k.includes('timecoverage_end') || k.includes('enddate') || k.includes('end_time') || k.includes('time_end') || k==='end')) {
+                              end = v;
+                          }
+                      }
+                  });
+                  // fallback: search attribute rows if present
+                  if ((!start || !end) && rows.length) {
+                      rows.forEach(r => {
+                          r.forEach(c => {
+                              const s = String(c||'');
+                              if (!start && s.match(/\d{4}-\d{2}-\d{2}/)) start = start || s;
+                          });
+                      });
+                  }
+                  if (end) {
+                      const endDate = new Date(end);
+                      if (isFinite(endDate)) return {start: start ? new Date(start) : null, end: endDate};
+                  }
+                  return null;
+              } catch(e) {
+                  return null;
+              }
+          },
+
+          // Render a simple line plot inside the popup placeholder for dataset d
+          async renderPopupPlot(d) {
+              const safeId = String(d.datasetID || 'id').replace(/[^a-z0-9_-]/gi, '_');
+              if (!this.plotRenderTimers) this.plotRenderTimers = {};
+              if (!this.plotControllers) this.plotControllers = {};
+              // debounce rendering per dataset popup to avoid many simultaneous fetches
+              if (this.plotRenderTimers[safeId]) clearTimeout(this.plotRenderTimers[safeId]);
+              this.plotRenderTimers[safeId] = setTimeout(async () => {
+                  try {
+                      const container = document.getElementById(`plot_${safeId}`);
+                      if (!container) return;
+                      // ensure container is visible (popup still open)
+                      if (!container.isConnected || container.offsetParent === null) return;
+                      // show lightweight loading indicator
+                      container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Caricamento…</div>';
+
+                      // determine variable to plot: prefer selected variable in popup if present
+                      const varSelectEl = document.getElementById(`varsel_${safeId}`);
+                      let varName = null;
+                      if (varSelectEl && varSelectEl.value) varName = varSelectEl.value;
+                      if (!varName) varName = (d.variables && d.variables.length>0) ? d.variables[0] : null;
+                      if (!varName) {
+                          container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Nessuna variabile disponibile</div>';
+                          return;
+                      }
+
+                      // determine time window: last available end and 7 previous days
+                      let coverage = await this.getDatasetTimeCoverage(d);
+                      let endDate = coverage && coverage.end ? coverage.end : new Date();
+                      if (endDate > new Date()) endDate = new Date();
+                      let startDate = new Date(endDate.getTime() - (7*24*3600*1000));
+                      if (coverage && coverage.start) {
+                          const covStart = new Date(coverage.start);
+                          if (isFinite(covStart) && covStart > startDate) startDate = covStart;
+                      }
+
+                      // set date inputs if present but DO NOT overwrite user-entered values
+                      const startInput = document.getElementById(`start_${safeId}`);
+                      const endInput = document.getElementById(`end_${safeId}`);
+                      if (startInput && !startInput.value) startInput.value = startDate.toISOString().slice(0,10);
+                      if (endInput && !endInput.value) endInput.value = endDate.toISOString().slice(0,10);
+                      const self = this;
+                      if (varSelectEl) {
+                          if (!varSelectEl.value && varSelectEl.options.length>1) varSelectEl.selectedIndex = 1;
+                          varSelectEl.onchange = function() { self.renderPopupPlot(d); };
+                      }
+                      if (startInput) startInput.onchange = function() { self.renderPopupPlot(d); };
+                      if (endInput) endInput.onchange = function() { self.renderPopupPlot(d); };
+
+                      // allow date inputs to override computed window
+                      if (startInput && startInput.value) startDate = new Date(startInput.value);
+                      if (endInput && endInput.value) endDate = new Date(endInput.value);
+
+                      // abort any previous pending fetch for this popup
+                      if (this.plotControllers[safeId]) {
+                          try { this.plotControllers[safeId].abort(); } catch(e){}
+                          delete this.plotControllers[safeId];
+                      }
+                      const controller = new AbortController();
+                      this.plotControllers[safeId] = controller;
+
+                      const t0 = encodeURIComponent(startDate.toISOString());
+                      const t1 = encodeURIComponent(endDate.toISOString());
+                      const csvUrl = `${d.endpoint}/tabledap/${d.datasetID}.csv?time,${encodeURIComponent(varName)}&time>=${t0}&time<=${t1}`;
+                      const resp = await fetch(csvUrl, { signal: controller.signal });
+                      if (!resp.ok) {
+                          container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Dati non disponibili</div>';
+                          return;
+                      }
+                      const txt = await resp.text();
+                      const lines = txt.split('\n').filter(l=>l.trim());
+                      if (lines.length <=1) {
+                          container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Nessun dato negli ultimi 7 giorni</div>';
+                          return;
+                      }
+                      const header = lines[0].split(',');
+                      const timeIdx = header.indexOf('time');
+                      const valIdx = header.indexOf(varName);
+                      if (timeIdx<0 || valIdx<0) {
+                          container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Formato dati inatteso</div>';
+                          return;
+                      }
+
+                      // parse rows but limit the number of points to avoid UI blocking
+                      const data = [];
+                      const MAX_POINTS = 1000;
+                      for (let i=1;i<lines.length;i++){
+                          const cols = lines[i].split(',');
+                          if (cols.length <= Math.max(timeIdx,valIdx)) continue;
+                          const t = new Date(cols[timeIdx]);
+                          const v = parseFloat(cols[valIdx]);
+                          if (!isFinite(v) || !isFinite(t)) continue;
+                          data.push({t, v});
+                          if (data.length >= MAX_POINTS) break;
+                      }
+                      if (data.length === 0) {
+                          container.innerHTML = '<div style="font-size:12px;color:#666;padding:8px">Nessun dato numerico</div>';
+                          return;
+                      }
+
+                      // now draw canvas
+                      container.innerHTML = '';
+                      const canvas = document.createElement('canvas');
+                      canvas.width = 260; canvas.height = 120;
+                      container.appendChild(canvas);
+                      const ctx = canvas.getContext('2d');
+                      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                      ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
+                      for (let x=0; x<=canvas.width; x+=24) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+                      for (let y=0; y<=canvas.height; y+=24) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+
+                      const vmin = Math.min(...data.map(dv=>dv.v));
+                      const vmax = Math.max(...data.map(dv=>dv.v));
+                      const tmin = data[0].t.getTime();
+                      const tmax = data[data.length-1].t.getTime();
+                      const pad = (vmax - vmin) * 0.1 || 1;
+                      const vlo = vmin - pad; const vhi = vmax + pad;
+                      const left=30, right=250, top=8, bottom=110;
+                      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+                      ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left, bottom); ctx.lineTo(right, bottom); ctx.stroke();
+                      ctx.fillStyle = '#005fa3';
+                      data.forEach(pt => {
+                          const x = left + ( (pt.t.getTime() - tmin) / (tmax - tmin || 1) ) * (right - left);
+                          const y = bottom - ( (pt.v - vlo) / (vhi - vlo || 1) ) * (bottom - top);
+                          ctx.beginPath(); ctx.arc(x,y,2.5,0,Math.PI*2); ctx.fill();
+                      });
+                      // cleanup controller
+                      try { delete this.plotControllers[safeId]; } catch(e){}
+                  } catch(e) {
+                      if (e && e.name === 'AbortError') return;
+                      console.warn('renderPopupPlot error', e);
+                  }
+              }, 160);
+          },
+
+          buildPopupHtml(d) {
+              // header
+              let html = `<b>${d.datasetID}</b><br><strong>${d.title || ''}</strong><br><small>Tipo: ${d.type || '(non specificato)'}</small><br><small>Endpoint: ${d.endpoint}</small><br>`;
+
+              // detect if dataset is effectively a point (very small bbox)
+              let isPoint = false;
+              if (d && d.bbox) {
+                  const latDiff = Math.abs((d.bbox.maxLat || 0) - (d.bbox.minLat || 0));
+                  const lonDiff = Math.abs((d.bbox.maxLon || 0) - (d.bbox.minLon || 0));
+                  if (latDiff < 1e-6 || lonDiff < 1e-6) isPoint = true;
+              }
+
+              // if point: insert plot placeholder and date selectors (start/end)
+              if (isPoint) {
+                  const safeId = String(d.datasetID || 'id').replace(/[^a-z0-9_-]/gi, '_');
+                  html += `<div class="popup-mini-plot" id="plot_${safeId}"></div>`;
+                  html += `<div class="popup-date-row"><label>Da: <input type="date" id="start_${safeId}" /></label><label>A: <input type="date" id="end_${safeId}" /></label></div>`;
+              }
+
+              html += `<a href="${d.link}" target="_blank">Apri dataset</a>`;
+
+              if (d.variables) {
+                  const safeIdVar = String(d.datasetID || 'id').replace(/[^a-z0-9_-]/gi, '_');
+                  html += `<br><label>Variabili:`;
+                  html += `<select id="varsel_${safeIdVar}" style="font-size:11px;margin-top:2px;">`;
+                  html += `<option value="">-- scegli --</option>`;
+                  d.variables.forEach(v => {
+                      html += `<option value="${v}">${v}</option>`;
+                  });
+                  html += `</select></label>`;
+              } else {
+                  html += '<br><em>caricamento variabili...</em>';
+              }
+              return html;
+          },
+
+          redrawAllMarkers() {
+              // Remove all layers from cluster group
+              const currentLayers = Object.assign({}, this.mapLayers);
+              this.mapLayers = {};
+              Object.values(currentLayers).forEach(layer => {
+                  try { this.markerClusterGroup.removeLayer(layer); } catch(e){}
+                  if (this.areaLayerGroup) try { this.areaLayerGroup.removeLayer(layer); } catch(e){}
+              });
+
+              // Re-add all datasets with current drawAreas setting in batches to avoid blocking
+              const list = this.datasets.filter(d => d.bbox);
+              const batchSize = 200;
+              let i = 0;
+              const self = this;
+              const processBatch = () => {
+                  const end = Math.min(i + batchSize, list.length);
+                  for (; i < end; i++) {
+                      try { self.addDatasetMarker(list[i]); } catch(e) { console.warn('addDatasetMarker batch error', e); }
+                  }
+                  if (i < list.length) setTimeout(processBatch, 40);
+              };
+              processBatch();
+          }
+      }
+      window.erddapApp = app;
+      return app;
+  }
+  </script>
+
+</body>
+</html>
+
