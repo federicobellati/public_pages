@@ -28,7 +28,7 @@
   <h1>Controllo qualità dei dati oceanografici in tempo reale</h1>
   <p class="intro">Serie temporali con controllo di qualità secondo QARTOD (Quality Assurance / Quality Control of Real-Time Oceanographic Data) – <a class="accent" href="https://w3id.org/cnr-ismar/resources/QARTOD/">Repository QARTOD <span aria-hidden="true">↗</span></a><br>La flag primaria, che aggrega l'esito di tutti i test QC, è mostrata nel grafico superiore; la diagnostica delle flag secondarie, una riga per ciascun test, in quello inferiore (giallo = Suspect, rosso = Fail).<br>Fonte dei dati: <a class="accent" href="https://seas-frost.ve.ismar.cnr.it/FROST-Server/v1.1/">server FROST di CNR ISMAR <span aria-hidden="true">↗</span></a>, standard OGC SensorThings API.</p>
   <form class="toolbar" id="form">
-    <div id="ds-field"><label for="ds">Datastream</label><select id="ds"><option>TAGLIAMENTO_MANTA35_WCTEMP_05_ext</option></select></div>
+    <div id="ds-field"><label for="ds">Datastream</label><select id="ds"><option>TAGLIAMENTO_MANTA35_WCTEMP_05_qc</option></select></div>
     <div class="nav"><button class="button" type="button" id="prev">◀ Settimana precedente</button><button class="button" type="button" id="next">Settimana successiva ▶</button><button class="button" type="button" id="now">Ultime</button></div>
   </form>
   <p class="small muted hint"><strong class="accent">NB</strong> · Viene caricata una settimana di dati: trascina il grafico o usa la rotella del mouse per muoverti e fare zoom; doppio clic per tornare alla vista iniziale.</p>
@@ -43,7 +43,7 @@ const BASE = 'https://seas-frost.ve.ismar.cnr.it/FROST-Server/v1.1';
 const FLAGS = {1: ['#2ca02c', 'Pass'], 2: ['#ff7f0e', 'Not evaluated'], 3: ['#ffd700', 'Suspect'], 4: ['#d62728', 'Fail'], 9: ['#7f7f7f', 'Missing']}, ORDER = [1, 2, 3, 4, 9], OTHER = ['#adb5bd', 'Other'];
 // enabled tests, in the order of qc_secondary_flag_list (tests_enabled in qc_qartod_params.yml)
 const TESTS = ['time_gap', 'syntax', 'location', 'gross_range', 'spike', 'rate_of_change', 'flat_line'];
-const SUFFIX = '_ext';  // only datastreams whose id ends with this are listed (will become '_qc')
+const SUFFIX = '_qc';  // only datastreams whose id ends with this are listed
 const $ = id => document.getElementById(id), H = 168, iso = t => new Date(t).toISOString().slice(0, 19), ms = t => Date.parse(String(t).replace(' ', 'T').slice(0, 19) + 'Z');
 let end = Date.now(), seq = 0, rows = [], tops = [];
 
@@ -125,7 +125,7 @@ $('prev').onclick = () => shift(-H * 3600e3);
 $('next').onclick = () => shift(H * 3600e3);
 $('now').onclick = () => { end = Date.now(); load(); };
 $('ds').onchange = () => load();
-getAll(`${BASE}/Datastreams?$select=id&$top=1000`).then(v => { const cur = $('ds').value; $('ds').replaceChildren(...v.map(d => String(d['@iot.id'])).filter(i => i.endsWith(SUFFIX)).sort().map(i => new Option(i, i, false, i === cur))); }).catch(() => {});
+getAll(`${BASE}/Datastreams?$select=id&$top=1000`).then(v => { const cur = $('ds').value, ids = v.map(d => String(d['@iot.id'])).filter(i => i.endsWith(SUFFIX)).sort(); $('ds').replaceChildren(...ids.map(i => new Option(i, i, false, i === cur))); if (ids.length && !ids.includes(cur)) load(); }).catch(() => {});
 load();
 </script>
 </body>
